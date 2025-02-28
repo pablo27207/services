@@ -1,0 +1,53 @@
+# ⚡ Archivos sensibles
+.env
+
+# 🐍 Archivos y carpetas de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# 🔄 Dependencias de Python
+venv/
+.env/
+*.venv
+pip-log.txt
+pip-delete-this-directory.txt
+
+# 📦 Archivos y carpetas de Docker
+*.dockerfile
+docker-compose.override.yml
+db_data/
+volumes/
+cache/
+
+# 🗂 Archivos de bases de datos
+*.sqlite3
+*.db
+*.sql
+
+# ⚙️ Configuración de IDEs (VSCode, PyCharm)
+.vscode/
+.idea/
+*.iml
+
+# 📝 Logs y archivos de ejecución
+logs/
+*.log
+nohup.out
+
+# 📂 Archivos de Celery
+celerybeat-schedule
+celerybeat.pid
+
+# 📊 Archivos de datos o dumps
+data/
+*.csv
+*.json
+*.xml
+*.rdf
+
+# 🖼 Archivos de caché de D3.js
+*.DS_Store
+Thumbs.db

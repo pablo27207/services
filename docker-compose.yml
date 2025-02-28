@@ -1,0 +1,88 @@
+services:
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./db_init/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+
+  cache:
+    image: redis:alpine
+    container_name: redis_cache
+    restart: always
+    ports:
+      - "6379:6379"
+
+  api_ingestor:
+    build: ./api_ingestor
+    container_name: api_ingestor
+    depends_on:
+      - db
+      - cache
+    env_file:
+      - .env
+    volumes:
+      - ./api_ingestor:/app
+    restart: always
+    ports:
+      - "5000:5000"
+
+  celery_worker:
+    build: ./api_ingestor
+    container_name: celery_worker
+    depends_on:
+      - db
+      - cache
+      - api_ingestor
+    env_file:
+      - .env
+    volumes:
+      - ./api_ingestor:/app
+    restart: always
+    command: celery -A celery_tasks worker --loglevel=info
+  
+  celery_beat:
+    build: ./api_ingestor
+    container_name: celery_beat
+    depends_on:
+      - celery_worker
+    env_file:
+      - .env
+    volumes:
+      - ./api_ingestor:/app
+    restart: always
+    command: celery -A celery_tasks beat --loglevel=info
+
+  flower:
+    image: mher/flower
+    container_name: celery_flower
+    restart: always
+    depends_on:
+      - celery_worker
+    env_file:
+      - .env
+    command: celery --broker=redis://cache:6379/0 flower --port=5555
+    ports:
+      - "5555:5555"
+    
+  web_app:
+    build: ./web_app
+    container_name: web_app
+    depends_on:
+      - db
+      - api_ingestor
+    env_file:
+      - .env
+    restart: always
+    volumes:
+      - ./web_app:/app
+    ports:
+      - "5001:5001"
+
+volumes:
+  db_data:
