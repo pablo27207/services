@@ -28,7 +28,7 @@ def index():
 def get_mareograph_data():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT timestamp, level FROM mareograph_data ORDER BY timestamp DESC LIMIT 100;")
+    cur.execute("SELECT timestamp, level FROM mareograph_data ORDER BY timestamp;")
     data = [{"timestamp": row[0], "level": row[1]} for row in cur.fetchall()]
     cur.close()
     conn.close()

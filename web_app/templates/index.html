@@ -11,5 +11,15 @@
     <h1>Niveles del Mareógrafo</h1>
     <svg id="chart"></svg>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+        <div id="tooltip" style="
+            position: absolute;
+            background-color: white;
+            padding: 8px;
+            border: 1px solid black;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+            display: none;">
+        </div>
 </body>
 </html>
