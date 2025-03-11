@@ -3,23 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mareógrafo - Datos en tiempo real</title>
+    <title>Datos en tiempo real - Mareógrafo y Boya</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
     <h1>Niveles del Mareógrafo</h1>
-    <svg id="chart"></svg>
+    <svg id="mareograph_chart"></svg>
+
+    <h1>Niveles de marea estimada</h1>
+    <svg id="tide_forecast_chart"></svg>
+
+    <h1>Datos de la Boya Oceanográfica</h1>
+    
+    <h2>Altura de Olas</h2>
+    <svg id="altura_olas_chart"></svg>
+
+    <h2>Período de Olas</h2>
+    <svg id="periodo_olas_chart"></svg>
+
+    <h2>Dirección de Olas</h2>
+    <svg id="direccion_olas_chart"></svg>
+
+    <h2>Velocidad de la Corriente</h2>
+    <svg id="velocidad_corriente_chart"></svg>
+
+    <h2>Dirección de la Corriente</h2>
+    <svg id="direccion_corriente_chart"></svg>
+
+    <h2>Radiación PAR</h2>
+    <svg id="radiacion_par_chart"></svg>
+
+    <h2>Batería</h2>
+    <svg id="bateria_chart"></svg>
+
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-        <div id="tooltip" style="
-            position: absolute;
-            background-color: white;
-            padding: 8px;
-            border: 1px solid black;
-            border-radius: 5px;
-            font-size: 12px;
-            pointer-events: none;
-            display: none;">
-        </div>
+
+    <div id="tooltip" style="
+        position: absolute;
+        background-color: white;
+        padding: 8px;
+        border: 1px solid black;
+        border-radius: 5px;
+        font-size: 12px;
+        pointer-events: none;
+        display: none;">
+    </div>
 </body>
 </html>

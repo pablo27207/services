@@ -6,3 +6,4 @@ celery[redis]
 celery[beat]
 redis
 flower
+pandas

@@ -18,8 +18,8 @@ class MareographScraper:
             cols = row.find_all("td")
             if len(cols) != 2:
                 continue  # Saltar filas inválidas
-            date_time = datetime.strptime(cols[0].text, "%d/%m/%y %H:%M")
-            level = float(cols[1].text)
+            date_time = datetime.strptime(cols[0].text, "%d/%m/%y %H:%M") # Formato: 09/03/25 23:40
+            level = float(cols[1].text) #4.01
             datos.append((date_time, level))
 
         return datos
