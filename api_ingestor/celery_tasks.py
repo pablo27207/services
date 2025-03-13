@@ -5,7 +5,7 @@ from services.task_config import TASKS
 
 app = Celery('tasks', broker='redis://cache:6379/0', backend='redis://cache:6379/0')
 
-def create_celery_task(task_name, scraper, db_insert):
+def create_celery_task(task_name, scraper):
     """Crea y registra dinámicamente una tarea de Celery."""
     @app.task(bind=True, name=f"celery_tasks.fetch_{task_name}", max_retries=3, default_retry_delay=60)
     def task(self):
@@ -18,7 +18,7 @@ def create_celery_task(task_name, scraper, db_insert):
 
             db = DBHandler()
             logger.info(f"💾 Insertando {len(datos)} registros en la base de datos para {task_name}...")
-            db_insert(db, datos)
+            db.insert_measurements(datos)
             logger.info(f"✅ Datos insertados correctamente para {task_name}.")
             return {"status": "success", "records": len(datos)}
 
@@ -30,7 +30,7 @@ def create_celery_task(task_name, scraper, db_insert):
 
 # 📌 Crear todas las tareas dinámicamente
 for task_name, config in TASKS.items():
-    create_celery_task(task_name, config["scraper"], config["db_insert"])
+    create_celery_task(task_name, config["scraper"])  # Eliminado db_insert
 
 # ⏳ Configuración de Celery Beat
 app.conf.beat_schedule = {

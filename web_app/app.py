@@ -28,10 +28,20 @@ def index():
 def get_mareograph_data():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT timestamp, level FROM mareograph_data ORDER BY timestamp;")
+    
+    # Obtener los datos del sensor del mareógrafo
+    cur.execute("""
+        SELECT timestamp, value
+        FROM oogsj_data.measurement
+        WHERE sensor_id = 1
+        ORDER BY timestamp;
+    """)
+    
     data = [{"timestamp": row[0], "level": float(row[1]) if row[1] is not None else 0.0} for row in cur.fetchall()]
+    
     cur.close()
     conn.close()
+    
     return jsonify(data)
 
 # Ruta para obtener datos de la boya en JSON
@@ -39,28 +49,57 @@ def get_mareograph_data():
 def get_buoy_data():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT timestamp, variable, value FROM buoy_data ORDER BY timestamp;")
+    
+    # Sensores de la boya CIDMAR-2
+    sensor_ids = {
+        3: "Altura de Olas",
+        4: "Periodo de Olas",
+        5: "Dirección de Olas",
+        6: "Velocidad de Corriente",
+        7: "Dirección de la Corriente",
+        8: "Radiación PAR",
+        9: "Batería"
+    }
+
+    cur.execute("""
+        SELECT sensor_id, timestamp, value
+        FROM oogsj_data.measurement
+        WHERE sensor_id IN (3, 4, 5, 6, 7, 8, 9)
+        ORDER BY timestamp;
+    """)
+
     raw_data = cur.fetchall()
     cur.close()
     conn.close()
 
-    # Estructurar datos agrupados por variable
-    data = {}
-    for timestamp, variable, value in raw_data:
-        if variable not in data:
-            data[variable] = []
-        data[variable].append({"timestamp": timestamp, "value": value})
+    # Estructurar los datos agrupados por sensor
+    data = {name: [] for name in sensor_ids.values()}
+    for sensor_id, timestamp, value in raw_data:
+        variable_name = sensor_ids.get(sensor_id, f"Sensor {sensor_id}")  # Por si falta alguno
+        data[variable_name].append({"timestamp": timestamp, "value": value})
 
-    return jsonify(data)  # Devolver un diccionario con cada variable como clave
+    return jsonify(data)
+
+
 
 @app.route("/api/tide_forecast")
-def get_tide_forecast():
+def get_tide_forecast_data():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT timestamp, level FROM tide_forecast ORDER BY timestamp;")
+    
+    # Obtener datos del sensor del modelo de predicción de mareas
+    cur.execute("""
+        SELECT timestamp, value
+        FROM oogsj_data.measurement
+        WHERE sensor_id = 2
+        ORDER BY timestamp;
+    """)
+    
     data = [{"timestamp": row[0], "level": float(row[1]) if row[1] is not None else 0.0} for row in cur.fetchall()]
+    
     cur.close()
     conn.close()
+    
     return jsonify(data)
 
 
