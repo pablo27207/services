@@ -21,8 +21,7 @@ class TideScraper:
         }
 
         date = datetime.now()
-        year = date.year
-        month = date.month
+        year, month = date.year, date.month
 
         data = {
             "Fanio": str(year),
@@ -41,15 +40,14 @@ class TideScraper:
             response.raise_for_status()
             soup = BeautifulSoup(response.text, "html.parser")
 
-            table_div = soup.find("div", class_="LetraMasChica")
-            if not table_div:
-                raise ValueError("No se encontró la tabla en la página")
+            tables = soup.find_all("table")
+            if len(tables) < 3:
+                raise ValueError("No se encontraron suficientes tablas para los datos de marea.")
 
-            table = table_div.find("table")
-            if not table:
-                raise ValueError("No se encontró la tabla de datos")
+            rows = []
+            for table in tables[-2:]:  # ← Tomar las dos últimas tablas
+                rows.extend(table.find_all("tr")[1:])  # Omitir encabezado 
 
-            rows = table.find_all("tr")[1:]  # Ignorar la primera fila (encabezados)
             results = []
             last_valid_day = None
 
