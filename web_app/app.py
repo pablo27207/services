@@ -147,6 +147,43 @@ def get_latest_buoy_data():
         }
 
     return jsonify(data)
+#'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+@app.route("/api/mareograph/latest")
+def get_latest_mareograph_data():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT DISTINCT ON (m.sensor_id)
+            s.name,
+            m.timestamp,
+            m.value,
+            u.symbol
+        FROM
+            oogsj_data.measurement m
+        JOIN
+            oogsj_data.sensor s ON m.sensor_id = s.id
+        JOIN
+            oogsj_data.unit u ON s.unit_id = u.id
+        WHERE
+            s.platform_id = 1  -- Mareógrafo
+        ORDER BY
+            m.sensor_id, m.timestamp DESC;
+    """)
+
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    data = {}
+    for name, timestamp, value, unit in rows:
+        data[name] = {
+            "timestamp": timestamp,
+            "value": safe_float(value) if value is not None else None,
+            "unit": unit
+        }
+
+    return jsonify(data)
 
 
 
