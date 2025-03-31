@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, render_template, request
 import psycopg2
 import os
+import math
 
 app = Flask(__name__)
 
@@ -29,7 +30,6 @@ def get_mareograph_data():
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # Obtener los datos del sensor del mareógrafo
     cur.execute("""
         SELECT timestamp, value
         FROM oogsj_data.measurement
@@ -37,12 +37,13 @@ def get_mareograph_data():
         ORDER BY timestamp;
     """)
     
-    data = [{"timestamp": row[0], "level": float(row[1]) if row[1] is not None else 0.0} for row in cur.fetchall()]
+    data = [{"timestamp": row[0], "level": safe_float(row[1])} for row in cur.fetchall()]
     
     cur.close()
     conn.close()
     
     return jsonify(data)
+
 
 # Ruta para obtener datos de la boya en JSON
 @app.route("/api/buoy")
@@ -87,7 +88,6 @@ def get_tide_forecast_data():
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # Obtener datos del sensor del modelo de predicción de mareas
     cur.execute("""
         SELECT timestamp, value
         FROM oogsj_data.measurement
@@ -95,12 +95,19 @@ def get_tide_forecast_data():
         ORDER BY timestamp;
     """)
     
-    data = [{"timestamp": row[0], "level": float(row[1]) if row[1] is not None else 0.0} for row in cur.fetchall()]
+    data = [{"timestamp": row[0], "level": safe_float(row[1])} for row in cur.fetchall()]
     
     cur.close()
     conn.close()
     
     return jsonify(data)
+#'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+def safe_float(val):
+    try:
+        f = float(val)
+        return f if not math.isnan(f) else 0.0
+    except:
+        return 0.0
 
 
     #-------------------------------------------Ultimo endpoit los ultimos datos sensados de la boya 
@@ -109,7 +116,6 @@ def get_latest_buoy_data():
     conn = get_db_connection()
     cur = conn.cursor()
 
-        # Consulta para obtener el último valor sensado de cada sensor de la boya CIDMAR-2
     cur.execute("""
         SELECT DISTINCT ON (m.sensor_id)
             s.name,
@@ -123,25 +129,25 @@ def get_latest_buoy_data():
         JOIN
             oogsj_data.unit u ON s.unit_id = u.id
         WHERE
-            s.platform_id = 3  -- ID de la boya CIDMAR-2
+            s.platform_id = 3
         ORDER BY
             m.sensor_id, m.timestamp DESC;
-        """)
+    """)
 
     rows = cur.fetchall()
     cur.close()
     conn.close()
 
-    # Estructura del JSON
     data = {}
     for name, timestamp, value, unit in rows:
-            data[name] = {
+        data[name] = {
             "timestamp": timestamp,
-            "value": float(value) if value is not None else None,
+            "value": safe_float(value) if value is not None else None,
             "unit": unit
-            }
+        }
 
     return jsonify(data)
+
 
 
 
