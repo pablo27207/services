@@ -7,3 +7,4 @@ celery[beat]
 redis
 flower
 pandas
+gunicorn
