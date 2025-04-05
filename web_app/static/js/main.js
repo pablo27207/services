@@ -37,13 +37,16 @@ document.addEventListener("DOMContentLoaded", function () {
         datasets.forEach(data => {
             data.forEach(d => {
                 d.timestamp = new Date(d.timestamp);
-                d.value = parseFloat(isTide ? d.level : d.value); // Si es marea, usar `level`
-                if (isNaN(d.value)) d.value = null;
+        
+                const valorOriginal = isTide ? d.level : d.value;
+                const valorParseado = parseFloat(valorOriginal);
+        
+                d.value = isNaN(valorParseado) ? null : valorParseado;
             });
         });
-    
+        
         datasets = datasets.map(data => data.filter(d => d.value !== null));
-    
+        
         // Escalas
         const x = d3.scaleTime()
             .domain(d3.extent(datasets.flat(), d => d.timestamp))
@@ -213,12 +216,27 @@ document.addEventListener("DOMContentLoaded", function () {
             .text(d => `${d}°`);
     }
 
-    // Obtener datos y graficar
-    d3.json(apiEndpoints.mareograph).then(mareographData => {
-        d3.json(apiEndpoints.tide_forecast).then(tideData => {
-            plotGraph("mareograph_chart", [mareographData, tideData], ["Mareógrafo", "Predicción de Marea"], ["steelblue", "red"],true);
-        });
-    });
+    Promise.all([
+        fetch(apiEndpoints.mareograph).then(r => r.text()),
+        fetch(apiEndpoints.tide_forecast).then(r => r.text())
+    ]).then(([mareographText, tideText]) => {
+    
+        // Corrigiendo JSON inválido antes de parsearlo
+        const fixNaN = texto => JSON.parse(texto.replace(/\bNaN\b/g, 'null'));
+    
+        const mareographData = fixNaN(mareographText);
+        const tideData = fixNaN(tideText);
+    
+        plotGraph(
+            "mareograph_chart",
+            [mareographData, tideData],
+            ["Mareógrafo", "Predicción de Marea"],
+            ["steelblue", "red"],
+            true
+        );
+    
+    }).catch(err => console.error("❌ Error:", err));
+    
 
 // Obtener datos de la boya y graficar cada variable correctamente
     d3.json(apiEndpoints.buoy).then(buoyData => {
