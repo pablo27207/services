@@ -103,6 +103,48 @@ def get_tide_forecast_data():
     return jsonify(data)
 
 
+    #-------------------------------------------Ultimo endpoit los ultimos datos sensados de la boya 
+@app.route("/api/buoy/latest")
+def get_latest_buoy_data():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+        # Consulta para obtener el último valor sensado de cada sensor de la boya CIDMAR-2
+    cur.execute("""
+        SELECT DISTINCT ON (m.sensor_id)
+            s.name,
+            m.timestamp,
+            m.value,
+            u.symbol
+        FROM
+            oogsj_data.measurement m
+        JOIN
+            oogsj_data.sensor s ON m.sensor_id = s.id
+        JOIN
+            oogsj_data.unit u ON s.unit_id = u.id
+        WHERE
+            s.platform_id = 3  -- ID de la boya CIDMAR-2
+        ORDER BY
+            m.sensor_id, m.timestamp DESC;
+        """)
+
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    # Estructura del JSON
+    data = {}
+    for name, timestamp, value, unit in rows:
+            data[name] = {
+            "timestamp": timestamp,
+            "value": float(value) if value is not None else None,
+            "unit": unit
+            }
+
+    return jsonify(data)
+
+
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)
