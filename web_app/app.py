@@ -2,6 +2,9 @@ from flask import Flask, jsonify, render_template, request
 import psycopg2
 import os
 import math
+import requests
+import time
+import hashlib
 
 app = Flask(__name__)
 
@@ -184,6 +187,76 @@ def get_latest_mareograph_data():
         }
 
     return jsonify(data)
+
+
+#--------------------------------------------------------
+
+#--------------------------------------------------------------------
+@app.route("/api/weatherlink/debug")
+def debug_signature():
+    t = str(int(time.time()))
+    signature = hashlib.sha256((WEATHERLINK_API_SECRET + t).encode("utf-8")).hexdigest()
+
+    return jsonify({
+        "t": t,
+        "signature": signature,
+        "url": f"https://api.weatherlink.com/v2/stations?api-key={WEATHERLINK_API_KEY}&t={t}&api-signature={signature}"
+    })
+
+#------------------------------------------------------------------------
+@app.route("/api/weatherlink/puerto-comodoro")
+def get_puerto_comodoro_data():
+    try:
+        api_key = "yz6qz7naojczuk6yvdtu5i1r3axhtbfb"
+        api_secret = "kuxdheam0y0rcoimemr7dgszhiyteiqy"
+
+        t = str(int(time.time()))
+        signature = hashlib.sha256((api_secret + t).encode("utf-8")).hexdigest()
+
+        # ❗ Aún falta definir el station_id real
+        station_id = "REEMPLAZAR_ESTO"
+
+        url = f"https://api.weatherlink.com/v2/current/{station_id}"
+        params = {
+            "api-key": api_key,
+            "t": t,
+            "api-signature": signature
+        }
+
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return jsonify(response.json())
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+#----------------------------------------------------------------
+@app.route("/api/weatherlink/codova")
+def get_caleta_cordova_data():
+    try:
+        api_key = "yl9c8tcwgmy3dccibgy4qvsi8igwzy0u"
+        api_secret = "t5v6xlhg5b3qu5pzbijxm69kifxqgrlu"
+
+        t = str(int(time.time()))
+        signature = hashlib.sha256((api_secret + t).encode("utf-8")).hexdigest()
+
+        # ❗ Aún falta definir el station_id real
+        station_id = "REEMPLAZAR_ESTO"
+
+        url = f"https://api.weatherlink.com/v2/current/{station_id}"
+        params = {
+            "api-key": api_key,
+            "t": t,
+            "api-signature": signature
+        }
+
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return jsonify(response.json())
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 
