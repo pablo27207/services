@@ -204,8 +204,8 @@ def debug_signature():
     })
 
 #------------------------------------------------------------------------
-@app.route("/api/weatherlink/puerto-comodoro")
-def get_puerto_comodoro_data():
+@app.route("/api/weatherlink/stations")
+def get_weatherlink_stations():
     try:
         api_key = "yz6qz7naojczuk6yvdtu5i1r3axhtbfb"
         api_secret = "kuxdheam0y0rcoimemr7dgszhiyteiqy"
@@ -213,10 +213,7 @@ def get_puerto_comodoro_data():
         t = str(int(time.time()))
         signature = hashlib.sha256((api_secret + t).encode("utf-8")).hexdigest()
 
-        # ❗ Aún falta definir el station_id real
-        station_id = "REEMPLAZAR_ESTO"
-
-        url = f"https://api.weatherlink.com/v2/current/{station_id}"
+        url = "https://api.weatherlink.com/v2/stations"
         params = {
             "api-key": api_key,
             "t": t,
