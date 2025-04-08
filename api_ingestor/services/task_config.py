@@ -2,6 +2,8 @@ from celery.schedules import crontab
 from services.mareograph_scraper import MareographScraper
 from services.buoy_scraper import BuoyScraper
 from services.tide_forecast_scraper import TideScraper
+from services.caleta_cordova_scraper import WeatherCCScraper
+from services.comodoro_rivadavia_scraper import WeatherCRScraper
 
 TASKS = {
     "buoy": {
@@ -15,6 +17,14 @@ TASKS = {
     "tide_forecast": {
         "scraper": TideScraper.fetch_tide_data,
         "schedule": crontab(minute=0, hour="*/6")  # Cada 6 horas
+    },
+    "caleta_cordova_dock": {
+        "scraper": WeatherCCScraper.fetch_station_data,
+        "schedule": crontab(minute="*/10")  # Cada 10 min
+    },
+    "comodoro_rivadavia_port": {
+        "scraper": WeatherCRScraper.fetch_station_data,
+        "schedule": crontab(minute="*/10")  # Cada 10 min
     }
 }
 
