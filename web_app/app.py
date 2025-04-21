@@ -27,21 +27,44 @@ mail = Mail(app)
 @app.route('/api/send-suggestion', methods=['POST'])
 def send_suggestion():
     data = request.get_json()
-    suggestion = data.get('message')
 
-    if not suggestion:
-        return jsonify({"status": "error", "message": "No se recibió ninguna sugerencia"}), 400
+    suggestion = data.get('message', '').strip()
+    nombre = data.get('nombre', '').strip()
+    email = data.get('email', '').strip()
+    entidad = data.get('entidad', '').strip()
+
+    if not all([suggestion, nombre, email, entidad]):
+        return jsonify({
+            "status": "error",
+            "message": "Faltan datos obligatorios para enviar la sugerencia"
+        }), 400
 
     try:
-        msg = Message("Nueva sugerencia recibida",
-                      recipients=['franco.garcia@conocimiento.gob.ar'])  # ← correo real
-        msg.body = f"Sugerencia:\n\n{suggestion}"
+        msg = Message(f"Sugerencia de {nombre}",
+                      sender=email,
+                      recipients=['franco.garcia@conocimiento.gob.ar'])
+
+        # 🔧 Esta es la parte que no estaba funcionando antes
+        msg.body = f"""📝 Nueva sugerencia recibida:
+
+👤 Nombre: {nombre}
+🏢 Entidad: {entidad}
+📧 Email: {email}
+
+💬 Mensaje:
+{suggestion}
+""".strip()
+
         mail.send(msg)
 
         return jsonify({"status": "success", "message": "Sugerencia enviada con éxito"}), 200
+
     except Exception as e:
         print("❌ Error al enviar el correo:", e)
-        return jsonify({"status": "error", "message": "Ocurrió un error al enviar la sugerencia"}), 500
+        return jsonify({
+            "status": "error",
+            "message": "Ocurrió un error al enviar la sugerencia"
+        }), 500
 
 
 #-------------------------------------------------------------------
