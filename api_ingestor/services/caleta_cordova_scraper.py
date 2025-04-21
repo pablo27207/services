@@ -1,13 +1,19 @@
-import logging
 import io
 from datetime import datetime
+import os
+from .config import get_env_var
 
-# Configuración del logger
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
 
 class WeatherCCScraper:
+    API_KEY = get_env_var("API_KEY_MUELLE")
+    API_SECRET = get_env_var("API_SECRET_MUELLE")
+    STATION_ID = 160710
+    LOCATION_ID = 1  # Reemplazar con el ID correspondiente
+    PROCESSING_LEVEL_ID = 1  # Reemplazar si corresponde
+    QUALITY_FLAG = 0  # Asumido como sin control de calidad aún
+
+
     @staticmethod
     def fetch_station_data():
-    
-        return results  # Devuelve lista de tuplas [(timestamp, value, quality_flag, processing_level_id, sensor_id, location_id)]
+        results= []
+        return results
