@@ -1,50 +1,89 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Datos en tiempo real - Mareógrafo y Boya</title>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/styles.css') }}">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard de Ingesta - Estado del Backend</title>
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@heroicons/vue@2.0.18/outline/index.min.js" defer></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
-<body>
-    <h1>Niveles del Mareógrafo y predicción de Hidrografía naval</h1>
-    <svg id="mareograph_chart"></svg>
 
-    <h1>Datos de la Boya Oceanográfica</h1>
-    
-    <h2>Altura de Olas</h2>
-    <svg id="altura_olas_chart"></svg>
+<body class="bg-gray-100 text-gray-800 min-h-screen">
 
-    <h2>Período de Olas</h2>
-    <svg id="periodo_olas_chart"></svg>
-
-    <h2>Dirección de Olas</h2>
-    <svg id="direccion_olas_chart"></svg>
-
-    <h2>Velocidad de la Corriente</h2>
-    <svg id="velocidad_corriente_chart"></svg>
-
-    <h2>Dirección de la Corriente</h2>
-    <svg id="direccion_corriente_chart"></svg>
-
-    <h2>Radiación PAR</h2>
-    <svg id="radiacion_par_chart"></svg>
-
-    <h2>Batería</h2>
-    <svg id="bateria_chart"></svg>
-
+    <!-- Navbar -->
+    <nav class="bg-blue-700 text-white p-4 shadow">
+      <div class="max-w-7xl mx-auto flex justify-between items-center">
+        <h1 class="text-2xl font-semibold">🌊 Dashboard de Ingesta Oceanográfica</h1>
+      </div>
+    </nav>
+  
+    <main class="max-w-7xl mx-auto p-6 space-y-12">
+  
+      <!-- Estado del Backend -->
+      <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white shadow rounded p-4 text-center">
+          <h2 class="text-lg font-semibold">Base de Datos</h2>
+          <p id="estado-db" class="text-gray-600 font-bold">...</p>
+        </div>
+        <div class="bg-white shadow rounded p-4 text-center">
+          <h2 class="text-lg font-semibold">Celery</h2>
+          <p id="estado-celery" class="text-gray-600 font-bold">...</p>
+        </div>
+        <div class="bg-white shadow rounded p-4 text-center">
+          <h2 class="text-lg font-semibold">Redis</h2>
+          <p id="estado-redis" class="text-gray-600 font-bold">...</p>
+        </div>
+      </section>
+  
+      <!-- Últimas ejecuciones -->
+      <section class="bg-white shadow rounded p-6">
+        <h2 class="text-xl font-semibold mb-4">Últimas ejecuciones de tareas</h2>
+        <ul id="lista-tareas" class="list-disc pl-6 text-sm text-gray-700 space-y-1"></ul>
+      </section>
+  
+      <!-- Botones de actualización -->
+      <section class="bg-blue-50 border border-blue-100 shadow rounded p-6">
+        <h2 class="text-xl font-semibold text-blue-800 mb-4">Forzar actualización de datos</h2>
+        <div class="flex flex-wrap justify-center gap-4">
+          <button onclick="forzarActualizacion('buoy')" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">Actualizar Boya</button>
+          <button onclick="forzarActualizacion('mareograph')" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">Actualizar Mareógrafo</button>
+          <button onclick="forzarActualizacion('tide_forecast')" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">Actualizar Predicción</button>
+          <button onclick="forzarActualizacion('caleta_cordova_dock')" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">Actualizar Caleta Córdova</button>
+          <button onclick="forzarActualizacion('comodoro_rivadavia_port')" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">Actualizar Comodoro Rivadavia</button>
+        </div>
+        <div id="estado-actualizacion" class="mt-4 text-sm font-medium text-gray-700 text-center"></div>
+      </section>
+  
+      <!-- Gráfico de Mareógrafo y Predicción -->
+      <section>
+        <h2 class="text-2xl font-bold text-center mb-4">Mareógrafo y Predicción</h2>
+        <div class="bg-white rounded shadow p-4 max-w-5xl mx-auto">
+          <svg id="mareograph_chart" class="w-full h-64"></svg>
+        </div>
+      </section>
+  
+      <!-- Gráficos de la boya -->
+      <section>
+        <h2 class="text-2xl font-bold text-center mb-6">Datos de la Boya Oceanográfica</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div><h3 class="text-center font-semibold mb-2">Altura de Olas</h3><svg id="altura_olas_chart" class="w-full h-64"></svg></div>
+          <div><h3 class="text-center font-semibold mb-2">Periodo de Olas</h3><svg id="periodo_olas_chart" class="w-full h-64"></svg></div>
+          <div><h3 class="text-center font-semibold mb-2">Dirección de Olas</h3><svg id="direccion_olas_chart" class="w-full h-64"></svg></div>
+          <div><h3 class="text-center font-semibold mb-2">Velocidad de Corriente</h3><svg id="velocidad_corriente_chart" class="w-full h-64"></svg></div>
+          <div><h3 class="text-center font-semibold mb-2">Dirección de la Corriente</h3><svg id="direccion_corriente_chart" class="w-full h-64"></svg></div>
+          <div><h3 class="text-center font-semibold mb-2">Radiación PAR</h3><svg id="radiacion_par_chart" class="w-full h-64"></svg></div>
+          <div><h3 class="text-center font-semibold mb-2">Batería</h3><svg id="bateria_chart" class="w-full h-64"></svg></div>
+        </div>
+      </section>
+  
+    </main>
+  
+    <!-- Tooltip flotante -->
+    <div id="tooltip" class="absolute bg-white border border-gray-300 text-xs p-2 rounded shadow hidden pointer-events-none z-50"></div>
+  
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-
-    <div id="tooltip" style="
-        position: absolute;
-        background-color: white;
-        padding: 8px;
-        border: 1px solid black;
-        border-radius: 5px;
-        font-size: 12px;
-        pointer-events: none;
-        display: none;">
-    </div>
-</body>
+  </body>
+  
 </html>

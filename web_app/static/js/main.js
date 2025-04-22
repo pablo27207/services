@@ -1,7 +1,4 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const width = 800,
-        height = 400,
-        margin = { top: 20, right: 30, bottom: 40, left: 50 };
 
     const apiEndpoints = {
         mareograph: "/api/mareograph",
@@ -20,6 +17,10 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     function plotGraph(svgId, datasets, labels, colors, isTide = false) {
+        const svgElement = document.getElementById(svgId);
+        const width = svgElement?.clientWidth || 800;
+        const height = svgElement?.clientHeight || 400;
+        const margin = { top: 20, right: 30, bottom: 40, left: 50 };
         const svg = d3.select("#" + svgId)
             .attr("width", width)
             .attr("height", height)
@@ -129,12 +130,17 @@ document.addEventListener("DOMContentLoaded", function () {
     
 
     function plotPolarGraph(svgId, data, label) {
-        const width = 400, height = 400, margin = 50;
+        const svgElement = document.getElementById(svgId);
+        const width = svgElement?.clientWidth || 400;
+        const height = svgElement?.clientHeight || 400;
+        const margin = 50;
         const radius = Math.min(width, height) / 2 - margin;
     
+        // Establecer tamaño directamente sobre el elemento SVG
+        svgElement.setAttribute("width", width);
+        svgElement.setAttribute("height", height);
+    
         const svg = d3.select("#" + svgId)
-            .attr("width", width)
-            .attr("height", height)
             .html("") // Limpiar el SVG
             .append("g")
             .attr("transform", `translate(${width / 2}, ${height / 2})`);
@@ -156,33 +162,23 @@ document.addEventListener("DOMContentLoaded", function () {
         data = data.filter(d => d.value !== null);
     
         // Agrupar en intervalos de 10 grados
-        const binSize = 10; // Tamaño del intervalo en grados
+        const binSize = 10;
         const bins = d3.range(0, 360 + binSize, binSize).map(d => ({ angle: d, count: 0 }));
     
-        // Contar ocurrencias en cada intervalo
         data.forEach(d => {
             const binIndex = Math.floor(d.value / binSize);
             bins[binIndex].count += 1;
         });
     
-        // Escala angular
-        const angleScale = d3.scaleLinear()
-            .domain([0, 360])
-            .range([0, 2 * Math.PI]);
+        const angleScale = d3.scaleLinear().domain([0, 360]).range([0, 2 * Math.PI]);
+        const rScale = d3.scaleLinear().domain([0, d3.max(bins, d => d.count) || 1]).range([0, radius]);
     
-        // Escala radial basada en la frecuencia
-        const rScale = d3.scaleLinear()
-            .domain([0, d3.max(bins, d => d.count) || 1])
-            .range([0, radius]);
-    
-        // Crear arcos para representar la cantidad de veces que aparece cada dirección
         const arc = d3.arc()
             .innerRadius(0)
             .outerRadius(d => rScale(d.count))
             .startAngle(d => angleScale(d.angle))
             .endAngle(d => angleScale(d.angle + binSize));
     
-        // Dibujar los arcos
         svg.selectAll("path")
             .data(bins)
             .enter().append("path")
@@ -192,7 +188,6 @@ document.addEventListener("DOMContentLoaded", function () {
             .attr("stroke-width", 1)
             .attr("opacity", 0.8);
     
-        // Líneas de dirección (cada 45 grados)
         svg.selectAll(".angle-line")
             .data(d3.range(0, 360, 45))
             .enter().append("line")
@@ -203,7 +198,6 @@ document.addEventListener("DOMContentLoaded", function () {
             .attr("stroke", "#999")
             .attr("stroke-width", 1);
     
-        // Etiquetas de dirección
         svg.selectAll(".angle-label")
             .data(d3.range(0, 360, 45))
             .enter().append("text")
@@ -215,6 +209,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .attr("fill", "#333")
             .text(d => `${d}°`);
     }
+    
 
     Promise.all([
         fetch(apiEndpoints.mareograph).then(r => r.text()),
@@ -235,7 +230,7 @@ document.addEventListener("DOMContentLoaded", function () {
             true
         );
     
-    }).catch(err => console.error("❌ Error:", err));
+    }).catch(err => console.error("Error:", err));
     
 
 // Obtener datos de la boya y graficar cada variable correctamente
@@ -248,7 +243,69 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }).catch(error => {
-        console.error("❌ Error al obtener los datos de la boya:", error);
-    });
-
+        console.error("Error al obtener los datos de la boya:", error);
+    }); 
 });
+function forzarActualizacion(taskName) {
+    const statusDiv = document.getElementById("estado-actualizacion");
+    statusDiv.innerText = `Enviando solicitud de actualización para "${taskName}"...`;
+
+    fetch(`/update/${taskName}`, {
+        method: "POST"
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status) {
+            statusDiv.innerText = `${taskName}: ${data.status} (ID: ${data.task_id})`;
+        } else {
+            statusDiv.innerText = `Error: ${JSON.stringify(data)}`;
+        }
+    })
+    .catch(err => {
+        statusDiv.innerText = ` Error al actualizar "${taskName}": ${err}`;
+    });
+}
+function actualizarEstadoBackend() {
+    fetch("/status")
+      .then(res => {
+        if (!res.ok) throw new Error("Respuesta no válida");
+        return res.json();
+      })
+      .then(status => {
+        document.getElementById("estado-db").innerText =
+          status.database === "ok" ? "✔ OK" : "❌ Error";
+        document.getElementById("estado-db").className =
+          status.database === "ok" ? "text-green-600 font-bold" : "text-red-600 font-bold";
+  
+        document.getElementById("estado-celery").innerText =
+          status.celery === "ok" ? "✔ OK" : "❌ Error";
+        document.getElementById("estado-celery").className =
+          status.celery === "ok" ? "text-green-600 font-bold" : "text-red-600 font-bold";
+  
+        document.getElementById("estado-redis").innerText =
+          status.redis === "ok" ? "✔ OK" : "❌ Error";
+        document.getElementById("estado-redis").className =
+          status.redis === "ok" ? "text-green-600 font-bold" : "text-red-600 font-bold";
+  
+        const lista = document.getElementById("lista-tareas");
+        lista.innerHTML = ""; // Limpiar anterior
+  
+        for (const [task, fecha] of Object.entries(status.last_runs)) {
+          const li = document.createElement("li");
+          li.textContent = `${task}: ${fecha || "❌ Sin ejecución reciente"}`;
+          li.className = fecha ? "text-gray-700" : "text-red-600";
+          lista.appendChild(li);
+        }
+      })
+      .catch(err => {
+        console.error("❌ Error al consultar /status", err);
+        // Opción: mostrar mensaje de error visual
+      });
+  }
+  
+  // Llamar al cargar la página
+  document.addEventListener("DOMContentLoaded", actualizarEstadoBackend);
+  
+  // Y cada 60 segundos para monitoreo activo
+  setInterval(actualizarEstadoBackend, 60000);
+  

@@ -8,20 +8,17 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./db_init/init.sql:/docker-entrypoint-initdb.d/init.sql
-    #ports:
-    #  - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      start_period: 60s
+      retries: 10
 
   cache:
     image: redis:alpine
     container_name: redis_cache
     restart: always
-   # ports:
-   #   - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -44,8 +41,6 @@ services:
       - ./api_ingestor:/app
       - ./logs:/app/logs
     restart: unless-stopped
-    #ports:
-    #  - "5000:5000"
 
   celery_worker:
     build: 
@@ -85,19 +80,6 @@ services:
     restart: always
     command: celery -A celery_tasks beat --loglevel=info
 
-  flower:
-    image: mher/flower
-    container_name: celery_flower
-    restart: always
-    depends_on:
-      - celery_worker
-    env_file:
-      - .env
-    command: celery --broker=redis://cache:6379/0 flower --port=5555
-   # ports:
-   #   - "5555:5555"
-    environment:
-      - FLOWER_BASIC_AUTH=${FLOWER_USER}:${FLOWER_PASSWORD}
     
   web_app:
     build: ./web_app
@@ -110,15 +92,13 @@ services:
     restart: always
     volumes:
       - ./web_app:/app
-   # ports:
-   #   - "5001:5001"
+  
   nginx:
     image: nginx:latest
     container_name: nginx_proxy
     depends_on:
       - web_app
       - api_ingestor
-      - flower
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
