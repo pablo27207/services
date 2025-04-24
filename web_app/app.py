@@ -1,3 +1,5 @@
+
+#----------Con esto debo hacer mi backend ---------------------------------------------#
 from flask import Flask, jsonify, render_template, request
 import psycopg2
 import os
@@ -5,8 +7,70 @@ import math
 import requests
 import time
 import hashlib
+from flask_mail import Mail, Message
+from flask import Blueprint
 
 app = Flask(__name__)
+
+#------------Para enviar emails--------------------------------------
+# 🔧 Configuración de correo (ejemplo con Gmail)
+
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'gfranco323@gmail.com'
+app.config['MAIL_PASSWORD'] = 'edfzzbicbaynuenl'
+app.config['MAIL_DEFAULT_SENDER'] = 'gfranco323@gmail.com'
+
+
+mail = Mail(app)
+
+
+@app.route('/api/send-suggestion', methods=['POST'])
+def send_suggestion():
+    data = request.get_json()
+
+    suggestion = data.get('message', '').strip()
+    nombre = data.get('nombre', '').strip()
+    email = data.get('email', '').strip()
+    entidad = data.get('entidad', '').strip()
+
+    if not all([suggestion, nombre, email, entidad]):
+        return jsonify({
+            "status": "error",
+            "message": "Faltan datos obligatorios para enviar la sugerencia"
+        }), 400
+
+    try:
+        msg = Message(f"Sugerencia de {nombre}",
+                      sender=email,
+                      recipients=['franco.garcia@conocimiento.gob.ar'])
+
+        # 🔧 Esta es la parte que no estaba funcionando antes
+        msg.body = f"""📝 Nueva sugerencia recibida:
+
+👤 Nombre: {nombre}
+🏢 Entidad: {entidad}
+📧 Email: {email}
+
+💬 Mensaje:
+{suggestion}
+""".strip()
+
+        mail.send(msg)
+
+        return jsonify({"status": "success", "message": "Sugerencia enviada con éxito"}), 200
+
+    except Exception as e:
+        print("❌ Error al enviar el correo:", e)
+        return jsonify({
+            "status": "error",
+            "message": "Ocurrió un error al enviar la sugerencia"
+        }), 500
+
+
+#-------------------------------------------------------------------
+
 
 # Configuración de la base de datos
 DB_CONFIG = {
@@ -40,12 +104,13 @@ def get_mareograph_data():
         ORDER BY timestamp;
     """)
     
-    data = [{"timestamp": row[0], "level": row[1]} for row in cur.fetchall()]
+    data = [{"timestamp": row[0], "level": safe_float(row[1])} for row in cur.fetchall()]
     
     cur.close()
     conn.close()
     
     return jsonify(data)
+
 
 # Ruta para obtener datos de la boya en JSON
 @app.route("/api/buoy")
@@ -83,6 +148,8 @@ def get_buoy_data():
 
     return jsonify(data)
 
+
+
 @app.route("/api/tide_forecast")
 def get_tide_forecast_data():
     conn = get_db_connection()
@@ -95,14 +162,97 @@ def get_tide_forecast_data():
         ORDER BY timestamp;
     """)
     
-    data = [{"timestamp": row[0], "level": row[1]} for row in cur.fetchall()]
+    data = [{"timestamp": row[0], "level": safe_float(row[1])} for row in cur.fetchall()]
     
     cur.close()
     conn.close()
     
     return jsonify(data)
+#'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+def safe_float(val):
+    try:
+        f = float(val)
+        return f if not math.isnan(f) else 0.0
+    except:
+        return 0.0
 
+
+    #-------------------------------------------Ultimo endpoit los ultimos datos sensados de la boya 
+@app.route("/api/buoy/latest")
+def get_latest_buoy_data():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT DISTINCT ON (m.sensor_id)
+            s.name,
+            m.timestamp,
+            m.value,
+            u.symbol
+        FROM
+            oogsj_data.measurement m
+        JOIN
+            oogsj_data.sensor s ON m.sensor_id = s.id
+        JOIN
+            oogsj_data.unit u ON s.unit_id = u.id
+        WHERE
+            s.platform_id = 3
+        ORDER BY
+            m.sensor_id, m.timestamp DESC;
+    """)
+
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    data = {}
+    for name, timestamp, value, unit in rows:
+        data[name] = {
+            "timestamp": timestamp,
+            "value": safe_float(value) if value is not None else None,
+            "unit": unit
+        }
+
+    return jsonify(data)
+#'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+@app.route("/api/mareograph/latest")
+def get_latest_mareograph_data():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT DISTINCT ON (m.sensor_id)
+            s.name,
+            m.timestamp,
+            m.value,
+            u.symbol
+        FROM
+            oogsj_data.measurement m
+        JOIN
+            oogsj_data.sensor s ON m.sensor_id = s.id
+        JOIN
+            oogsj_data.unit u ON s.unit_id = u.id
+        WHERE
+            s.platform_id = 1  -- Mareógrafo
+        ORDER BY
+            m.sensor_id, m.timestamp DESC;
+    """)
+
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    data = {}
+    for name, timestamp, value, unit in rows:
+        data[name] = {
+            "timestamp": timestamp,
+            "value": safe_float(value) if value is not None else None,
+            "unit": unit
+        }
+
+    return jsonify(data)
 
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)
+
