@@ -112,8 +112,6 @@ services:
     build:
       context: ./oogsj-web
     container_name: frontend_oogsj
-    ports:
-      - "3000:3000"
     restart: always
     depends_on:
       - web_app
