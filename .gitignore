@@ -52,3 +52,46 @@ data/
 *.DS_Store
 Thumbs.db
 sistema-oogsj/
+
+
+
+# 🛑 Ignorar Python en Flask (Backend)
+oogsj-backend/__pycache__/
+oogsj-backend/*.pyc
+oogsj-backend/*.pyo
+oogsj-backend/venv/
+
+# 🛑 Ignorar Svelte (Frontend)
+oogsj-frontend/node_modules/
+oogsj-frontend/build/
+oogsj-frontend/.svelte-kit/
+
+# 🛑 Ignorar archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Ignorar archivos generados por SvelteKit
+# Ignorar dependencias de Node
+node_modules/
+# Output de producción SvelteKit
+.build/
+dist/
+build/
+
+# Archivos del entorno
+.env
+*.env.*
+
+# Archivos del editor
+.vscode/
+.idea/
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+
+.svelte-kit/
+build/
+types/
+
