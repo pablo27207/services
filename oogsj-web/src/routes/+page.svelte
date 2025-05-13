@@ -29,8 +29,10 @@
   }
 </style>
 
+
 <!-- Carrusel -->
 <Carrusel />
+<br>
 
 <!-- Sección de misión -->
 <h2 class="text-3xl font-bold text-center">Objetivos y Metas del Observatorio</h2>

@@ -47,7 +47,7 @@
     </div>
   </div>
 
-  <img src="/imagenes/logo comodoro-conocimiento-oscuro.png" alt="Logo Observatorio" class="h-16" />
+  <img src="/imagenes/Logotipos/logo comodoro-conocimiento-oscuro.png" alt="Logo Observatorio" class="h-16" />
 
   <div class="navbar-center">
     <a class="btn btn-ghost text-xl">OBSERVATORIO OCEANOGRÁFICO GOLFO SAN JORGE</a>
