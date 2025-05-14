@@ -1,48 +1,53 @@
 <script>
-    import { onMount } from 'svelte';
-    export let endpoint = '';
-    export let titulo = 'Nombre de la Plataforma';
-    export let iconosVariables = {};
-  
-    let loading = true;
-    let ultimaFecha = '';
-    let variables = [];
-  
-    function formatearFecha(fechaStr) {
-      const fecha = new Date(fechaStr);
-      const dia = String(fecha.getDate()).padStart(2, '0');
-      const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-      const anio = fecha.getFullYear();
-      const horas = String(fecha.getHours()).padStart(2, '0');
-      const minutos = String(fecha.getMinutes()).padStart(2, '0');
-      return `${dia}/${mes}/${anio} ${horas}:${minutos}`;
-    }
-  
-    onMount(async () => {
-      try {
-        const res = await fetch(endpoint);
-        const data = await res.json();
-        console.log("Datos recibidos:", data);
-  
-        const claves = Object.keys(data);
-        if (claves.length > 0) {
-          const primera = data[claves[0]];
-          ultimaFecha = formatearFecha(primera.timestamp);
-  
-          variables = claves.map(nombre => ({
-            nombre,
-            unidad: data[nombre].unit,
-            valor: data[nombre].value,
-            icono: iconosVariables[nombre] ?? '❓'
-          }));
-        }
-      } catch (err) {
-        console.error("Error al obtener datos:", err);
-      } finally {
-        loading = false;
+  import { onMount } from 'svelte';
+  export let endpoint = '';
+  export let titulo = 'Nombre de la Plataforma';
+  export let iconosVariables = {};
+  export let ordenVariables = []; // 🆕 ORDEN MANUAL
+
+  let loading = true;
+  let ultimaFecha = '';
+  let variables = [];
+
+  function formatearFecha(fechaStr) {
+    const fecha = new Date(fechaStr);
+    const dia = String(fecha.getDate()).padStart(2, '0');
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+    const anio = fecha.getFullYear();
+    const horas = String(fecha.getHours()).padStart(2, '0');
+    const minutos = String(fecha.getMinutes()).padStart(2, '0');
+    return `${dia}/${mes}/${anio} ${horas}:${minutos}`;
+  }
+
+  onMount(async () => {
+    try {
+      const res = await fetch(endpoint);
+      const data = await res.json();
+      console.log("Datos recibidos:", data);
+
+      const claves = ordenVariables.length > 0
+        ? ordenVariables
+        : Object.keys(data);
+
+      if (claves.length > 0) {
+        const primera = data[claves[0]];
+        ultimaFecha = formatearFecha(primera.timestamp);
+
+        variables = claves.map(nombre => ({
+          nombre,
+          unidad: data[nombre]?.unit ?? '',
+          valor: data[nombre]?.value ?? null,
+          icono: iconosVariables[nombre] ?? '❓'
+        }));
       }
-    });
-  </script>
+    } catch (err) {
+      console.error("Error al obtener datos:", err);
+    } finally {
+      loading = false;
+    }
+  });
+</script>
+
   
   <div class="contenedor-principal">
     <h2 class="nombre">{titulo}</h2>

@@ -19,19 +19,29 @@
 </script>
   
 <PanelVariables
-endpoint="/api/buoy/latest"
-titulo={Boya.nombre}
-iconosVariables={{
-  "Sensor de Altura de Olas - CIDMAR-2": "🌊",
-  "Sensor de Velocidad de Corriente - CIDMAR-2": "🌊",
-  "Sensor de Dirección de Corriente - CIDMAR-2": "🧭",
-  "Sensor de Dirección de Olas - CIDMAR-2": "🧭",
-  "Sensor de Periodo de Olas - CIDMAR-2": "🌊",
-  "Sensor de Radiación PAR - CIDMAR-2": "☀️",
-  "Sensor de Velocidad del Viento - CIDMAR-2": "💨",
-  "Sensor de Batería - CIDMAR-2": "🔋"
-}}
+  endpoint="/api/buoy/latest"
+  titulo={Boya.nombre}
+  ordenVariables={[
+    "Sensor de Altura de Olas - CIDMAR-2",
+    "Sensor de Dirección de Olas - CIDMAR-2",
+    "Sensor de Periodo de Olas - CIDMAR-2",
+    "Sensor de Dirección de la Corriente - CIDMAR-2",
+    "Sensor de Velocidad de Corriente - CIDMAR-2",
+    "Sensor de Radiación PAR - CIDMAR-2",
+    "Sensor de Batería - CIDMAR-2"
+  ]}
+  iconosVariables={{
+    "Sensor de Altura de Olas - CIDMAR-2": "🌊",
+    "Sensor de Dirección de Olas - CIDMAR-2": "🧭",
+    "Sensor de Periodo de Olas - CIDMAR-2": "🌊",
+    "Sensor de Dirección de la Corriente - CIDMAR-2": "🧭",
+    "Sensor de Velocidad de Corriente - CIDMAR-2": "🌊",
+    "Sensor de Radiación PAR - CIDMAR-2": "☀️",
+    "Sensor de Batería - CIDMAR-2": "🔋"
+  }}
 />
+
+
 <!-- Contenedor para los gráficos en el modal -->
 
   <BoyaVisualizacionDatos></BoyaVisualizacionDatos>
