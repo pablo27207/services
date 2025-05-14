@@ -8,8 +8,9 @@
 
     let svg: SVGSVGElement | null = null;
     let tooltip: HTMLDivElement | null = null;
+    let container: HTMLDivElement | null = null;
 
-    const width = 600, height = 300;
+    const height = 300;
     const margin = { top: 20, right: 60, bottom: 40, left: 50 };
 
     const localeEs = timeFormatLocale({
@@ -26,9 +27,14 @@
     const formatoFechaEje = localeEs.format("%a %d");
     const formatoFechaTooltip = localeEs.format("%d/%m/%Y %H:%M");
 
-    onMount(() => drawChart());
+    onMount(() => {
+        if (container) {
+            const width = container.clientWidth;
+            drawChart(width);
+        }
+    });
 
-    const drawChart = () => {
+    const drawChart = (width: number) => {
         if (!svg || !tooltip) return;
 
         const x = d3.scaleTime()
@@ -43,15 +49,15 @@
             .x(d => x(new Date(d.timestamp)))
             .y(d => y(d.level));
 
-        d3.select(svg).selectAll("*").remove();
-
         const svgEl = d3.select(svg)
-            .attr("width", width)
-            .attr("height", height);
+            .attr("viewBox", `0 0 ${width} ${height}`)
+            .attr("preserveAspectRatio", "xMidYMid meet");
+
+        svgEl.selectAll("*").remove();
 
         const datasets = [
-            { data: mareographData, color: "steelblue", label: "Mareógrafo", dashed: false },
-            { data: tideForecastData, color: "red", label: "Predicción-de-Marea", dashed: true }
+            { data: mareographData, color: "steelblue", label: "mareografo", dashed: false },
+            { data: tideForecastData, color: "red", label: "prediccion", dashed: true }
         ];
 
         datasets.forEach(({ data, color, label, dashed }) => {
@@ -76,23 +82,34 @@
                 .attr("class", `point-${label}`)
                 .on("mouseover", (event, d) => {
                     tooltip!.style.display = "block";
-                    tooltip!.innerHTML = `📅 ${formatoFechaTooltip(new Date(d.timestamp))}<br> 🔹 ${label.replace(/-/g, " ")}: ${d.level}`;
-                    const { offsetX, offsetY } = event;
-                    tooltip!.style.top = `${offsetY - 30}px`;
-                    tooltip!.style.left = `${offsetX - 20}px`;
+                    tooltip!.innerHTML = `
+                        📅 ${formatoFechaTooltip(new Date(d.timestamp))}<br>
+                        🔹 ${label === "mareografo" ? "Mareógrafo" : "Predicción"}: ${d.level}`;
+                    tooltip!.style.top = `${event.offsetY - 30}px`;
+                    tooltip!.style.left = `${event.offsetX - 20}px`;
                 })
                 .on("mouseout", () => tooltip!.style.display = "none");
         });
 
+        // Eje X
+        const xAxis = d3.axisBottom(x)
+            .tickFormat(formatoFechaEje)
+            .ticks(Math.floor(width / 90));
+
         svgEl.append("g")
             .attr("class", "x-axis")
             .attr("transform", `translate(0,${height - margin.bottom})`)
-            .call(d3.axisBottom(x).tickFormat(formatoFechaEje));
+            .call(xAxis)
+            .selectAll("text")
+            .attr("transform", "rotate(-45)")
+            .style("text-anchor", "end");
 
+        // Eje Y
         svgEl.append("g")
             .attr("transform", `translate(${margin.left},0)`)
             .call(d3.axisLeft(y));
 
+        // Zoom
         const zoom = d3.zoom()
             .scaleExtent([1, 10])
             .translateExtent([[0, 0], [width, height]])
@@ -103,35 +120,74 @@
                     .x(d => newX(new Date(d.timestamp)))
                     .y(d => y(d.level));
 
-                svgEl.select(".x-axis").call(d3.axisBottom(newX).tickFormat(formatoFechaEje));
+                svgEl.select(".x-axis")
+                    .call(d3.axisBottom(newX).tickFormat(formatoFechaEje)
+                        .ticks(Math.floor(width / 90)))
+                    .selectAll("text")
+                    .attr("transform", "rotate(-45)")
+                    .style("text-anchor", "end");
 
-                svgEl.select(".linea-Mareógrafo").attr("d", newLine(mareographData));
-                svgEl.select(".linea-Predicción-de-Marea").attr("d", newLine(tideForecastData));
+                svgEl.select(".linea-mareografo").attr("d", newLine(mareographData));
+                svgEl.select(".linea-prediccion").attr("d", newLine(tideForecastData));
 
-                svgEl.selectAll(".point-Mareógrafo")
+                svgEl.selectAll(".point-mareografo")
                     .attr("cx", d => newX(new Date(d.timestamp)));
 
-                svgEl.selectAll(".point-Predicción-de-Marea")
+                svgEl.selectAll(".point-prediccion")
                     .attr("cx", d => newX(new Date(d.timestamp)));
             });
 
         svgEl.call(zoom);
+
+        // Zoom inicial automático a la predicción
+       const inicioPrediccion = tideForecastData?.[0]?.timestamp;
+if (inicioPrediccion) {
+    const prediccionX = x(new Date(inicioPrediccion));
+    const centroZoom = (width - margin.left - margin.right) / 2;
+
+    const t = d3.zoomIdentity
+        .translate(centroZoom - prediccionX, 0)
+        .scale(4); // podés ajustar este valor
+
+    svgEl.call(zoom.transform, t);
+}
+
     };
 </script>
 
-<svg bind:this={svg}></svg>
-<div bind:this={tooltip} class="tooltip"></div>
+<div class="grafico-wrapper" bind:this={container}>
+    <svg bind:this={svg}></svg>
+    <div bind:this={tooltip} class="tooltip"></div>
+</div>
 
 <style>
-    .tooltip {
-        position: absolute;
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: 6px 10px;
-        border-radius: 5px;
-        font-size: 12px;
-        display: none;
-        pointer-events: none;
-        transform: translate(-50%, -120%);
-    }
+.grafico-wrapper {
+  width: 100%;
+  max-width: 100%;
+  min-width: 300px;
+  height: auto;
+  overflow-x: auto;
+  position: relative;
+  margin-top: 1rem;
+}
+
+
+svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    display: none;
+    pointer-events: none;
+    transform: translate(-50%, -120%);
+    z-index: 10;
+}
 </style>

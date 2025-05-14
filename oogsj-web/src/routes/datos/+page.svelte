@@ -226,8 +226,10 @@
     align-items: center;
     border-radius: 8px;
     z-index: 15;
-    width: 60%;
-    max-height: 80vh;
+     width: 60%;
+     height: 80%;
+    max-width: 600px;
+    max-height: 600px;
     overflow-y: auto;
   }
 
