@@ -30,9 +30,12 @@
       <a href="https://www.unp.edu.ar" target="_blank" rel="noopener noreferrer">
         <img src="/imagenes/Logotipos/logo-universidad-2.png" alt="UNPSJB" class="h-16" />
       </a>
-        <!--<a href="https://www.roma.gob.ar" target="_blank" rel="noopener noreferrer">-->
-        <img src="/imagenes/Logotipos/Roma-Logo.png" alt="ROMA" class="h-10" />
-      <!--</a> -->
+       <a href="https://www.linkedin.com/company/gipis-unpsjb/posts/?feedView=all" target="_blank" rel="noopener noreferrer">
+        <img src="/imagenes/Logotipos/gipis-blanco.png" alt="GIPIS" class="h-16" />
+      </a> 
+       <!-- <a href="https://www.roma.gob.ar" target="_blank" rel="noopener noreferrer">-->
+       <!-- <img src="/imagenes/Logotipos/Roma-Logo.png" alt="ROMA" class="h-10" />-->
+      <!--</a> 
       <a href="https://inidep.edu.ar" target="_blank" rel="noopener noreferrer">
         <img src="/imagenes/Logotipos/logo-INIDEP-blanco.png" alt="INIDEP" class="h-16" />
       </a>
@@ -41,6 +44,6 @@
       </a>
       <a href="https://www.cancilleria.gob.ar/es/iniciativas/dna/instituto-antartico-argentino" target="_blank" rel="noopener noreferrer">
         <img src="/imagenes/Logotipos/logo-instituto-antartico-blanco.png" alt="Instituto Antártico" class="h-16" />
-      </a>
+      </a>-->
   </div>
 </footer>

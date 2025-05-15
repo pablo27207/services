@@ -62,8 +62,8 @@
         display: flex;
         flex-direction: column;
         align-items: center;
+        max-width: 100%; /* Antes: 700px */
         width: 100%;
-        max-width: 700px;
         margin: auto;
         padding: 1rem;
         background: #fff;

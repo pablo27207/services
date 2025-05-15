@@ -3,6 +3,17 @@
   import GraficoLineal from '$lib/components/datos/GraficosEstandar/GraficoLineal.svelte';
   import GraficoPolar from '$lib/components/datos/GraficosEstandar/GraficoPolar.svelte';
 
+  const descripcionesVariables = {
+  "Altura de Olas": "Altura media de las olas registradas. Útil para evaluar el estado del mar.",
+  "Periodo de Olas": "Tiempo entre dos crestas de ola consecutivas. Relacionado con la energía del oleaje.",
+  "Dirección de Olas": "Ángulo desde el que provienen las olas. Se mide en grados respecto al norte.",
+  "Velocidad de Corriente": "Velocidad del flujo de agua en la zona. Es fundamental para navegación y dispersión de contaminantes.",
+  "Dirección de la Corriente": "Dirección hacia donde se mueve la corriente. Expresada en grados.",
+  "Radiación PAR": "Radiación fotosintéticamente activa. Importante para estudios biológicos y de producción primaria.",
+  "Batería": "Voltaje de la batería de la plataforma. Indicador del estado energético del equipo."
+};
+
+
   const buoyVariables = {
     "Altura de Olas": "altura_olas_chart",
     "Periodo de Olas": "periodo_olas_chart",
@@ -46,6 +57,7 @@
     flex-direction: column;
     align-items: center;
     width: 100%;
+     max-width: 100%;
   }
 
   .chart-header {
@@ -100,8 +112,9 @@
         <div class="info-wrapper">
           <button class="info-button">ℹ️</button>
           <div class="info-tooltip">
-            Explicación sobre {label}. Aquí podés poner cómo se interpreta esta variable.
+            {descripcionesVariables[label]}
           </div>
+
         </div>
       </div>
 

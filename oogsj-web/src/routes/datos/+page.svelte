@@ -226,8 +226,11 @@
     align-items: center;
     border-radius: 8px;
     z-index: 15;
-    width: 60%;
-    max-height: 80vh;
+     width: 90vw;
+     height: 90%;
+    max-width: 1200px;
+    max-height: 600px;
+    min-width: 700;
     overflow-y: auto;
   }
 
