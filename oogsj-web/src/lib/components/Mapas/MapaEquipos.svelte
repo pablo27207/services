@@ -105,6 +105,7 @@
       });
 
       ignLayer.addTo(map);
+      selectPlataforma(ubicaciones[0]);
 
       ubicaciones.forEach(ubicacion => {
         const customIcon = L.divIcon({
