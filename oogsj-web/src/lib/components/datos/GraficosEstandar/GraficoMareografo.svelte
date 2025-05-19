@@ -10,7 +10,7 @@
     let tooltip: HTMLDivElement | null = null;
     let container: HTMLDivElement | null = null;
 
-    const height = 300;
+    const height = 300; //aca modifcamos el tamaño de la altura
     const margin = { top: 20, right: 60, bottom: 40, left: 50 };
 
     const localeEs = timeFormatLocale({
@@ -164,7 +164,7 @@ if (inicioPrediccion) {
 .grafico-wrapper {
   width: 100%;
   max-width: 100%;
-  min-width: 300px;
+  min-width: 500px;
   height: auto;
   overflow-x: auto;
   position: relative;
@@ -175,7 +175,7 @@ if (inicioPrediccion) {
 svg {
     width: 100%;
     height: auto;
-    display: block;
+    min-height: 400px;
 }
 
 .tooltip {
