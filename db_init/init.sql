@@ -205,12 +205,12 @@ INSERT INTO oogsj_data.sensor (platform_id, name, variable_id, unit_id) VALUES
 (1, 'Valeport TideMaster', 4, 1),
 (2, 'Modelo de Predicción de Mareas - Hidrografía Naval', 4, 1),
 (3, 'Sensor de Altura de Olas - CIDMAR-2', 1, 1),
-(3, 'Sensor de Periodo de Olas - CIDMAR-2', 2, 5),
-(3, 'Sensor de Dirección de Olas - CIDMAR-2', 3, 18),
-(3, 'Sensor de Velocidad de Corriente - CIDMAR-2', 5, 8),
-(3, 'Sensor de Dirección de la Corriente - CIDMAR-2', 6, 18),
-(3, 'Sensor de Radiación PAR - CIDMAR-2', 7, 6),
-(3, 'Sensor de Batería - CIDMAR-2', 8, 7),
+(3, 'Sensor de Periodo de Olas - CIDMAR-2', 2, 6), --Modifique aca , habia un 18
+(3, 'Sensor de Dirección de Olas - CIDMAR-2', 3, 5), --Modifique aca , habia un 18
+(3, 'Sensor de Velocidad de Corriente - CIDMAR-2', 5, 9), --Modifique aca , habia un 8
+(3, 'Sensor de Dirección de la Corriente - CIDMAR-2', 6, 5), --Modifique aca , habia un 18
+(3, 'Sensor de Radiación PAR - CIDMAR-2', 7, 7), --Modifique aca , habia un6
+(3, 'Sensor de Batería - CIDMAR-2', 8, 8), --Modifique aca , habia un 7
 (4,'temp_out - 160710', 9, 2),
 (4,'hum_out - 160710', 10, 14),
 (4,'bar - 160710', 11, 3),

@@ -44,7 +44,7 @@ celerybeat.pid
 # 📊 Archivos de datos o dumps
 data/
 *.csv
-*.json
+#*.json
 *.xml
 *.rdf
 
