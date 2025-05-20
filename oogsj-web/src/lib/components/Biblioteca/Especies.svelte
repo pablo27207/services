@@ -399,28 +399,193 @@ En algunas lagunas y ambientes cerrados, su población depende de la siembra o m
   imagen: "imagenes/Especies/pejerrey.png",
   pdf: "",
   expandido: false
+},
+{
+  nombre: "Salmón de mar",
+  nombreCientifico: "Pseudopercis semifasciata",
+  descripcionCorta: "Pez costero de cuerpo alargado y robusto, muy valorado por su carne blanca y firme. Frecuente en fondos arenosos del Atlántico sudoccidental.",
+  descripcionLarga: `Clase: Actinopterygii  
+Orden: Perciformes  
+Familia: Pinguipedidae
+
+Descripción general:  
+El salmón de mar (Pseudopercis semifasciata), también llamado salmonete, es un pez demersal de cuerpo alargado, ligeramente comprimido lateralmente, robusto y de gran tamaño. Tiene una cabeza grande, ojos prominentes y una boca terminal con dientes pequeños. Posee una única aleta dorsal larga con radios espinosos y blandos, y una aleta caudal ligeramente ahorquillada.
+
+Coloración:  
+Generalmente de fondo marrón o verdoso con tonos más claros en el vientre. En los flancos puede presentar bandas o manchas transversales oscuras, más evidentes en ejemplares juveniles.
+
+Tamaño:  
+Puede alcanzar hasta 1 metro de longitud total y superar los 8 kg de peso. Las tallas comerciales comunes oscilan entre los 40 y 80 cm.
+
+Distribución y hábitat:  
+Habita en el Océano Atlántico sudoccidental, desde el sur de Brasil hasta el Golfo San Jorge y la costa patagónica argentina. Prefiere fondos arenosos o fangosos entre los 10 y 100 metros de profundidad. Es una especie costera pero puede hallarse en plataformas más profundas en determinadas épocas.
+
+Alimentación:  
+Es carnívoro. Se alimenta de peces pequeños, crustáceos bentónicos (cangrejos, camarones) y moluscos. Es un predador activo que caza en el fondo marino.
+
+Reproducción:  
+Se reproduce en primavera-verano. Los adultos forman agregaciones reproductivas en determinadas zonas del litoral patagónico. La fecundación es externa y los huevos son pelágicos.
+
+Importancia comercial:  
+Es muy apreciado por su carne blanca, firme y sabrosa, de alta calidad culinaria. Se comercializa fresco o congelado. Es objetivo de la pesca artesanal y también deportiva, especialmente en zonas del sur argentino.
+
+Estado del recurso:  
+Ha mostrado signos de sobreexplotación en ciertas áreas, por lo cual se recomienda una gestión adecuada de su pesquería, incluyendo vedas, tallas mínimas y monitoreo de capturas.`,
+
+  imagen: "/imagenes/Especies/salmon.png",
+  pdf: "",
+  expandido: false
+},
+{
+  nombre: "Escrófalo",
+  nombreCientifico: "Sebastes oculatus",
+  descripcionCorta: "Pez bentónico robusto de colores rojizos, espinas venenosas y hábitos solitarios. Habita en fondos rocosos del Atlántico sudoccidental.",
+  descripcionLarga: `Clase: Actinopterygii  
+Orden: Scorpaeniformes  
+Familia: Sebastidae
+
+Descripción general:  
+El escrófalo (Sebastes oculatus) es un pez marino bentónico de cuerpo comprimido lateralmente, cabeza robusta y espinosa, con una gran boca orientada hacia el frente. Presenta espinas óseas bien desarrolladas en la cabeza y radios espinosos en las aletas dorsal y pectorales. Al igual que otras especies del género **Sebastes**, posee glándulas venenosas asociadas a las espinas, cuya picadura puede causar dolor.
+
+Coloración:  
+Presenta un color base rojo a rojizo-anaranjado, con manchas oscuras o irregulares a lo largo del cuerpo. Su coloración puede variar con el entorno y la edad del ejemplar. Los ojos son grandes y de color oscuro.
+
+Tamaño:  
+Alcanza longitudes de hasta 35–40 cm, aunque es más común encontrar ejemplares de entre 20 y 30 cm.
+
+Distribución y hábitat:  
+Es una especie característica del Atlántico sudoccidental. Se distribuye desde el sur de Brasil hasta Tierra del Fuego, siendo frecuente en la plataforma continental argentina y zonas rocosas del Golfo San Jorge. Vive en fondos rocosos o mixtos, a profundidades de 20 a 200 metros. Es una especie demersal, sedentaria y de hábitos solitarios o en pequeños grupos.
+
+Alimentación:  
+Carnívoro, se alimenta principalmente de crustáceos, moluscos y pequeños peces bentónicos. Es un depredador oportunista, que caza al acecho desde el fondo.
+
+Reproducción:  
+Es **vivíparo**, a diferencia de muchos peces. La fecundación es interna y las crías se desarrollan en el interior de la madre. Las hembras paren crías vivas en estadios larvales avanzados, que luego completan su desarrollo en la columna de agua.
+
+Importancia comercial:  
+Tiene valor pesquero regional, principalmente como especie acompañante en la pesca de arrastre. Su carne es blanca, firme y comestible, aunque no tiene un mercado tan desarrollado como otras especies comerciales. También es apreciado en la pesca recreativa.
+
+Otros datos:  
+Debido a su biología (crecimiento lento y madurez tardía), las especies del género Sebastes son susceptibles a la sobrepesca. Se recomienda un manejo precautorio para evitar impactos sobre la población.`,
+
+  imagen: "/imagenes/Especies/escrofalo.png",
+  pdf: "",
+  expandido: false
+},
+
+{
+  nombre: "Pez Sapo",
+  nombreCientifico: "Notothenia Angustata",
+  descripcionCorta: "Pez bentónico robusto de colores rojizos, espinas venenosas y hábitos solitarios. Habita en fondos rocosos del Atlántico sudoccidental.",
+  descripcionLarga: `Clase: Actinopterygii  
+Orden: Scorpaeniformes  
+Familia: Sebastidae
+
+Descripción general:  
+El escrófalo (Sebastes oculatus) es un pez marino bentónico de cuerpo comprimido lateralmente, cabeza robusta y espinosa, con una gran boca orientada hacia el frente. Presenta espinas óseas bien desarrolladas en la cabeza y radios espinosos en las aletas dorsal y pectorales. Al igual que otras especies del género **Sebastes**, posee glándulas venenosas asociadas a las espinas, cuya picadura puede causar dolor.
+
+Coloración:  
+Presenta un color base rojo a rojizo-anaranjado, con manchas oscuras o irregulares a lo largo del cuerpo. Su coloración puede variar con el entorno y la edad del ejemplar. Los ojos son grandes y de color oscuro.
+
+Tamaño:  
+Alcanza longitudes de hasta 35–40 cm, aunque es más común encontrar ejemplares de entre 20 y 30 cm.
+
+Distribución y hábitat:  
+Es una especie característica del Atlántico sudoccidental. Se distribuye desde el sur de Brasil hasta Tierra del Fuego, siendo frecuente en la plataforma continental argentina y zonas rocosas del Golfo San Jorge. Vive en fondos rocosos o mixtos, a profundidades de 20 a 200 metros. Es una especie demersal, sedentaria y de hábitos solitarios o en pequeños grupos.
+
+Alimentación:  
+Carnívoro, se alimenta principalmente de crustáceos, moluscos y pequeños peces bentónicos. Es un depredador oportunista, que caza al acecho desde el fondo.
+
+Reproducción:  
+Es **vivíparo**, a diferencia de muchos peces. La fecundación es interna y las crías se desarrollan en el interior de la madre. Las hembras paren crías vivas en estadios larvales avanzados, que luego completan su desarrollo en la columna de agua.
+
+Importancia comercial:  
+Tiene valor pesquero regional, principalmente como especie acompañante en la pesca de arrastre. Su carne es blanca, firme y comestible, aunque no tiene un mercado tan desarrollado como otras especies comerciales. También es apreciado en la pesca recreativa.
+
+Otros datos:  
+Debido a su biología (crecimiento lento y madurez tardía), las especies del género Sebastes son susceptibles a la sobrepesca. Se recomienda un manejo precautorio para evitar impactos sobre la población.`,
+
+  imagen: "/imagenes/Especies/pezsapo.png",
+  pdf: "",
+  expandido: false
+},
+
+{
+  nombre: "Pulpo Colorado",
+  nombreCientifico: "Enteroctopus Megaloyathus",
+  descripcionCorta: "Pez bentónico robusto de colores rojizos, espinas venenosas y hábitos solitarios. Habita en fondos rocosos del Atlántico sudoccidental.",
+  descripcionLarga: `Clase: Actinopterygii  
+Orden: Scorpaeniformes  
+Familia: Sebastidae
+
+Descripción general:  
+El escrófalo (Sebastes oculatus) es un pez marino bentónico de cuerpo comprimido lateralmente, cabeza robusta y espinosa, con una gran boca orientada hacia el frente. Presenta espinas óseas bien desarrolladas en la cabeza y radios espinosos en las aletas dorsal y pectorales. Al igual que otras especies del género **Sebastes**, posee glándulas venenosas asociadas a las espinas, cuya picadura puede causar dolor.
+
+Coloración:  
+Presenta un color base rojo a rojizo-anaranjado, con manchas oscuras o irregulares a lo largo del cuerpo. Su coloración puede variar con el entorno y la edad del ejemplar. Los ojos son grandes y de color oscuro.
+
+Tamaño:  
+Alcanza longitudes de hasta 35–40 cm, aunque es más común encontrar ejemplares de entre 20 y 30 cm.
+
+Distribución y hábitat:  
+Es una especie característica del Atlántico sudoccidental. Se distribuye desde el sur de Brasil hasta Tierra del Fuego, siendo frecuente en la plataforma continental argentina y zonas rocosas del Golfo San Jorge. Vive en fondos rocosos o mixtos, a profundidades de 20 a 200 metros. Es una especie demersal, sedentaria y de hábitos solitarios o en pequeños grupos.
+
+Alimentación:  
+Carnívoro, se alimenta principalmente de crustáceos, moluscos y pequeños peces bentónicos. Es un depredador oportunista, que caza al acecho desde el fondo.
+
+Reproducción:  
+Es **vivíparo**, a diferencia de muchos peces. La fecundación es interna y las crías se desarrollan en el interior de la madre. Las hembras paren crías vivas en estadios larvales avanzados, que luego completan su desarrollo en la columna de agua.
+
+Importancia comercial:  
+Tiene valor pesquero regional, principalmente como especie acompañante en la pesca de arrastre. Su carne es blanca, firme y comestible, aunque no tiene un mercado tan desarrollado como otras especies comerciales. También es apreciado en la pesca recreativa.
+
+Otros datos:  
+Debido a su biología (crecimiento lento y madurez tardía), las especies del género Sebastes son susceptibles a la sobrepesca. Se recomienda un manejo precautorio para evitar impactos sobre la población.`,
+
+  imagen: "/imagenes/Especies/pezsapo.png",
+  pdf: "",
+  expandido: false
 }
 
 
-  ];
 
-  const toggleExpand = (index) => {
-    especies[index].expandido = !especies[index].expandido;
-  };
+
+
+  ];
+  // Paginación
+  let currentPage = 1;
+  const itemsPerPage = 6;
+
+  $: totalPages = Math.ceil(especies.length / itemsPerPage);
+
+  $: paginatedEspecies = especies.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  function changePage(page) {
+    if (page >= 1 && page <= totalPages) {
+      currentPage = page;
+    }
+  }
+
+  function toggleExpand(indexInPage) {
+    const globalIndex = (currentPage - 1) * itemsPerPage + indexInPage;
+
+    // Reemplazamos el array entero para que Svelte reaccione
+    especies = especies.map((especie, i) =>
+      i === globalIndex ? { ...especie, expandido: !especie.expandido } : especie
+    );
+  }
 </script>
 
+<!-- Render de especies -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8">
-  {#each especies as especie, i}
+  {#each paginatedEspecies as especie, i}
     <div class="bg-base-100 shadow-xl rounded-lg overflow-hidden p-4 text-white">
-      <img
-        src={especie.imagen}
-        alt={especie.nombre}
-        class="rounded-md h-48 w-full object-cover mb-4"
-      />
-
+      <img src={especie.imagen} alt={especie.nombre} class="rounded-md h-48 w-full object-cover mb-4" />
       <h3 class="text-xl font-bold text-orange-400">{especie.nombre}</h3>
       <p class="italic text-sm text-gray-300 mb-2">{especie.nombreCientifico}</p>
-
       <p class="text-gray-200">{especie.descripcionCorta}</p>
 
       <button
@@ -447,4 +612,34 @@ En algunas lagunas y ambientes cerrados, su población depende de la siembra o m
       {/if}
     </div>
   {/each}
+</div>
+
+<!-- Controles de paginación -->
+<div class="mt-10 flex justify-center gap-2">
+  <button
+    class="px-3 py-1 bg-gray-700 text-white rounded disabled:opacity-50"
+    on:click={() => changePage(currentPage - 1)}
+    disabled={currentPage === 1}
+  >
+    ◀ Anterior
+  </button>
+
+  {#each Array(totalPages) as _, i}
+    <button
+      class={`px-3 py-1 rounded ${
+        currentPage === i + 1 ? "bg-orange-500 text-white" : "bg-gray-700 text-gray-300"
+      }`}
+      on:click={() => changePage(i + 1)}
+    >
+      {i + 1}
+    </button>
+  {/each}
+
+  <button
+    class="px-3 py-1 bg-gray-700 text-white rounded disabled:opacity-50"
+    on:click={() => changePage(currentPage + 1)}
+    disabled={currentPage === totalPages}
+  >
+    Siguiente ▶
+  </button>
 </div>

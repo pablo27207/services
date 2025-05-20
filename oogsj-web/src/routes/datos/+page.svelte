@@ -32,7 +32,7 @@
     
     },
     {
-      nombre: "Estacion Meteorologica Puerto",
+      nombre: "Estacion Meteorologica Puerto Comodoro Rivadavia",
       lat: -45.8620,
       lon: -67.4639,
       info: "Mareógrafo en Comodoro Rivadavia.",
@@ -61,12 +61,7 @@
     }
   ];
 
-  const customIcon = L.divIcon({
-    className: 'emoji-marker',
-    html: `<span style="font-size: 24px;">📍</span>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15]
-  });
+  
 
   function openModal(plataforma) {
     plataformaSeleccionada = plataforma;
@@ -86,23 +81,46 @@
   }
 
   function addMarkers() {
-    if (!map) return;
+  if (!map) return;
 
-    map.eachLayer(layer => {
-      if (layer instanceof L.Marker) {
-        map.removeLayer(layer);
-      }
+  map.eachLayer(layer => {
+    if (layer instanceof L.Marker) {
+      map.removeLayer(layer);
+    }
+  });
+
+  plataformas.forEach(plataforma => {
+    // 🔁 Lógica para seleccionar emoji por tipo o estado
+    let emoji = "🟢"; // activo por defecto
+
+    if (plataforma.nombre.toLowerCase().includes("futura") || (plataforma.sensores?.length === 0)) {
+      emoji = "🔴";
+    } else if (plataforma.nombre.toLowerCase().includes("mareógrafo")) {
+      emoji = "🟢";
+    } else if (plataforma.nombre.toLowerCase().includes("Estacion Meteorologica")) {
+      emoji = "🟠"; 
+    } else if (plataforma.nombre.toLowerCase().includes("boya")) {
+      emoji = "🟢";
+    } else if (plataforma.nombre.toLowerCase().includes("Estacion Meteorologica caleta") || plataforma.nombre.toLowerCase().includes("puerto")) {
+      emoji = "🟠";
+    }
+
+    const customIcon = L.divIcon({
+      className: 'emoji-marker',
+      html: `<span style="font-size: 10px;">${emoji}</span>`,
+      iconSize: [15, 15],
+      iconAnchor: [8, 8]
     });
 
-    plataformas.forEach(plataforma => {
-      const marker = L.marker([plataforma.lat, plataforma.lon], { icon: customIcon }).addTo(map);
-      marker.bindTooltip(plataforma.nombre, { permanent: false, direction: "top" });
+    const marker = L.marker([plataforma.lat, plataforma.lon], { icon: customIcon }).addTo(map);
+    marker.bindTooltip(plataforma.nombre, { permanent: false, direction: "top" });
 
-      marker.on('click', () => {
-        openModal(plataforma);
-      });
+    marker.on('click', () => {
+      openModal(plataforma);
     });
-  }
+  });
+}
+
 
   onMount(() => {
     if (typeof window !== 'undefined') {

@@ -83,7 +83,6 @@
 
   onMount(() => {
     if (typeof window !== 'undefined') {
-      // 🔍 Ajustamos el zoom inicial a 14 (más cercano)
       map = L.map(mapElement).setView([ubicaciones[0].lat, ubicaciones[0].lon], 14);
 
       const ignLayer = L.tileLayer.wms('https://wms.ign.gob.ar/geoserver/ows?', {
@@ -97,10 +96,8 @@
         console.error("No se pudo cargar la capa del IGN, cambiando a Esri.");
         map.removeLayer(ignLayer);
         L.tileLayer(
-          'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', 
-          {
-            attribution: ''
-          }
+          'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          { attribution: '' }
         ).addTo(map);
       });
 
@@ -108,11 +105,23 @@
       selectPlataforma(ubicaciones[0]);
 
       ubicaciones.forEach(ubicacion => {
+        let emoji = "🟢";
+
+        if (ubicacion.nombre.includes("Futura") || ubicacion.sensores.length === 0) {
+          emoji = "🔴";
+        } else if (ubicacion.nombre.includes("Mareografo")) {
+          emoji = "🟢";
+        } else if (ubicacion.nombre.includes("Estacion Meteorologica")) {
+          emoji = "🟠";
+        } else if (ubicacion.nombre.includes("Boya")) {
+          emoji = "🟢";
+        }
+
         const customIcon = L.divIcon({
           className: 'emoji-marker',
-          html: `<span style="font-size: 24px;">📍</span>`, 
-          iconSize: [30, 30],
-          iconAnchor: [15, 15]
+          html: `<span style="font-size: 10px;">${emoji}</span>`,
+          iconSize: [15, 15],
+          iconAnchor: [8, 18]
         });
 
         const marker = L.marker([ubicacion.lat, ubicacion.lon], { icon: customIcon }).addTo(map);
@@ -125,6 +134,7 @@
       });
     }
   });
+
 </script>
 
 <div bind:this={mapElement} class="map-container"></div>
