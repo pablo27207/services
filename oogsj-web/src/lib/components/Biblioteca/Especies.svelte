@@ -512,37 +512,36 @@ Debido a su biología (crecimiento lento y madurez tardía), las especies del g�
 
 {
   nombre: "Pulpo Colorado",
-  nombreCientifico: "Enteroctopus Megaloyathus",
-  descripcionCorta: "Pez bentónico robusto de colores rojizos, espinas venenosas y hábitos solitarios. Habita en fondos rocosos del Atlántico sudoccidental.",
-  descripcionLarga: `Clase: Actinopterygii  
-Orden: Scorpaeniformes  
-Familia: Sebastidae
+  nombreCientifico: "Enteroctopus megalocyathus",
+  descripcionCorta: "Molusco cefalópodo de gran tamaño, coloración rojiza y hábitos solitarios. Habita fondos rocosos y arenosos del Pacífico suroriental y Atlántico sudoccidental.",
+  descripcionLarga: `Clase: Cephalopoda  
+Orden: Octopoda  
+Familia: Octopodidae
 
 Descripción general:  
-El escrófalo (Sebastes oculatus) es un pez marino bentónico de cuerpo comprimido lateralmente, cabeza robusta y espinosa, con una gran boca orientada hacia el frente. Presenta espinas óseas bien desarrolladas en la cabeza y radios espinosos en las aletas dorsal y pectorales. Al igual que otras especies del género **Sebastes**, posee glándulas venenosas asociadas a las espinas, cuya picadura puede causar dolor.
+El **pulpo colorado** (*Enteroctopus megalocyathus*) es un cefalópodo bentónico de cuerpo robusto, brazos largos con dos filas de ventosas y una coloración que varía entre rojizo y pardo. Es una de las especies de pulpos de mayor tamaño en la región sur de Sudamérica.
 
 Coloración:  
-Presenta un color base rojo a rojizo-anaranjado, con manchas oscuras o irregulares a lo largo del cuerpo. Su coloración puede variar con el entorno y la edad del ejemplar. Los ojos son grandes y de color oscuro.
+Su cuerpo presenta un tono rojizo a pardo, con la capacidad de cambiar ligeramente su color y textura para camuflarse con el entorno.
 
 Tamaño:  
-Alcanza longitudes de hasta 35–40 cm, aunque es más común encontrar ejemplares de entre 20 y 30 cm.
+Puede alcanzar hasta 4 kg de peso y más de 1 metro de envergadura (de brazo a brazo), aunque lo más común es encontrar individuos de tamaño mediano.
 
 Distribución y hábitat:  
-Es una especie característica del Atlántico sudoccidental. Se distribuye desde el sur de Brasil hasta Tierra del Fuego, siendo frecuente en la plataforma continental argentina y zonas rocosas del Golfo San Jorge. Vive en fondos rocosos o mixtos, a profundidades de 20 a 200 metros. Es una especie demersal, sedentaria y de hábitos solitarios o en pequeños grupos.
+Habita en las aguas frías del **Pacífico suroriental** (sur de Chile) y del **Atlántico sudoccidental** (sur de Argentina, principalmente en el Golfo San Jorge). Se encuentra en fondos rocosos, grietas y cuevas, desde la zona intermareal hasta profundidades de unos 100 metros.
 
 Alimentación:  
-Carnívoro, se alimenta principalmente de crustáceos, moluscos y pequeños peces bentónicos. Es un depredador oportunista, que caza al acecho desde el fondo.
+Es un **carnívoro oportunista**, que se alimenta de crustáceos, peces pequeños y moluscos, a los que caza con sus brazos y picos córneos.
 
 Reproducción:  
-Es **vivíparo**, a diferencia de muchos peces. La fecundación es interna y las crías se desarrollan en el interior de la madre. Las hembras paren crías vivas en estadios larvales avanzados, que luego completan su desarrollo en la columna de agua.
+Es una especie **semélpara**: se reproduce una sola vez en su vida. La hembra deposita los huevos en grietas y cuevas, y los cuida activamente hasta que eclosionan. Durante este período deja de alimentarse y muere poco después de la eclosión.
 
 Importancia comercial:  
-Tiene valor pesquero regional, principalmente como especie acompañante en la pesca de arrastre. Su carne es blanca, firme y comestible, aunque no tiene un mercado tan desarrollado como otras especies comerciales. También es apreciado en la pesca recreativa.
+Tiene valor pesquero local y es explotado en pesquerías artesanales e industriales. Su carne es apreciada en gastronomía por su sabor y textura.
 
 Otros datos:  
-Debido a su biología (crecimiento lento y madurez tardía), las especies del género Sebastes son susceptibles a la sobrepesca. Se recomienda un manejo precautorio para evitar impactos sobre la población.`,
-
-  imagen: "/imagenes/Especies/pezsapo.png",
+Debido a su tamaño y comportamiento, es un depredador clave en su ecosistema. Tiene gran capacidad de aprendizaje y adaptación, mostrando comportamientos complejos como el uso de herramientas o el camuflaje avanzado.`,
+  imagen: "/imagenes/Especies/pulporojo.png",
   pdf: "",
   expandido: false
 }
