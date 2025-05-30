@@ -252,6 +252,50 @@ def get_latest_mareograph_data():
 
     return jsonify(data)
 
+#---------------------------Estacion Meteoroloigca --------------------------------------------------------------
+
+STATION_ID = "160710"
+
+@app.route("/api/weatherstation/puertoEstacionComodoro")
+def get_weatherstation_puerto():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT s.name, m.timestamp, m.value, u.symbol
+            FROM oogsj_data.measurement m
+            JOIN oogsj_data.sensor s ON m.sensor_id = s.id
+            JOIN oogsj_data.unit u ON s.unit_id = u.id
+            WHERE s.name LIKE %s
+            AND m.timestamp = (
+                SELECT MAX(m2.timestamp)
+                FROM oogsj_data.measurement m2
+                WHERE m2.sensor_id = s.id
+            )
+            ORDER BY s.name;
+        """, (f"%{STATION_ID}%",))
+
+        data = [
+            {
+                "sensor": row[0],
+                "timestamp": row[1].isoformat(),
+                "value": float(row[2]),
+                "unit": row[3]
+            }
+            for row in cur.fetchall()
+        ]
+
+        cur.close()
+        conn.close()
+        return jsonify(data)
+
+    except Exception as e:
+        print(f"❌ ERROR en /api/weatherstation/puerto: {e}")
+        return jsonify({"error": "Internal Server Error"}), 500
+
+
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)
