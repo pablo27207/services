@@ -330,7 +330,7 @@ Debido a su biología y lento crecimiento, debe pescarse de forma controlada par
 },
   
 {
-  nombre: "Robalo",
+  nombre: "Robálo",
   nombreCientifico: "Eleginops maclovinus",
   descripcionCorta: "Pez costero robusto y muy apreciado, común en aguas templadas del Atlántico sur.",
   descripcionLarga: `Clase: Actinopterygii  

@@ -203,17 +203,17 @@
 <!-- Estilos optimizados -->
 <style>
   .modal-footer {
-    position: sticky;
-    bottom: 0;
-    margin-left: 80%;
-    padding: 5px;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    align-items: right;
-    
-  }
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  background: white;
+  padding: 5px;
+  z-index: 20;
+}
+
 
   .container {
     position: relative;
