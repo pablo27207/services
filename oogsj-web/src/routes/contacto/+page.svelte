@@ -65,32 +65,36 @@
     text-align: left;
     color: #374151; /* gris oscuro */
   }
+
+  @media (max-width: 768px) {
+  .ubicacion-aporte-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .ubicacion-aporte-grid .columna:nth-child(1) {
+    order: 1; /* Ubicación */
+  }
+
+  .ubicacion-aporte-grid .columna:nth-child(2) {
+    order: 2; /* Mandá tu aporte */
+  }
+
+  .direccion {
+    order: 3; /* Dirección debajo del mapa */
+    margin-top: 1rem;
+  }
+
+  .contenedor-ajustado {
+    width: 100%;
+  }
+}
+
 </style>
 
 <!-- Título -->
 <br>
 
-<!-- Contenedor combinado: Contacto + Imagen -->
-<!-- <div class="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-center gap-6 p-6 bg-black-200 rounded-lg shadow border" style="border-color: #ff8c00;">-->
-
-
-  <!-- Contacto de la agencia -->
-  <!--<div class="flex-1 flex flex-col items-center text-center space-y-2">
-    <h2 class="text-xl font-semibold text-gray-800">Contacto de la Agencia</h2>
-    <div class="text-white-800 text-left">
-      <p class="mb-2"><strong>Nombre de la agencia:</strong> {agencia.nombre}</p>
-      <p class="mb-2"><strong>Correo electrónico:</strong> <a href={`mailto:${agencia.email}`} class="text-blue-600 hover:underline">{agencia.email}</a></p>
-      <p><strong>Teléfono:</strong> <a href={`tel:${agencia.telefono}`} class="text-blue-600 hover:underline">{agencia.telefono}</a></p>
-    </div>
-    
-  </div>-->
-
-  <!-- Imagen de la agencia -->
-    <!-- <div class="flex-1 flex items-center justify-center">
-    <img src="../imagenes/EdificioObservatorioAgencia.jpg" alt="Edificio Agencia CIDMAR" class="rounded-lg shadow-md max-w-full max-h-64 object-cover" />
-  </div>
-  -->
- <!--</div>-->
 
 
 <!-- Sección de ubicación y formulario -->
