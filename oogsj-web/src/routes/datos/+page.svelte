@@ -61,7 +61,23 @@
     }
   ];
 
-  
+  // Detectar clic fuera del modal
+function clickOutside(node) {
+  const handleClick = (event) => {
+    if (!node.contains(event.target)) {
+      showModal = false;
+    }
+  };
+
+  document.addEventListener('mousedown', handleClick, true);
+
+  return {
+    destroy() {
+      document.removeEventListener('mousedown', handleClick, true);
+    }
+  };
+}
+
 
   function openModal(plataforma) {
     plataformaSeleccionada = plataforma;
@@ -162,10 +178,9 @@
 <div class="container">
   <div id="map" bind:this={mapElement}></div>
 
-  <div class="modal-container {showModal ? '' : 'modal-hidden'}">
-    {#if plataformaSeleccionada}
-      
-      
+  <div class="modal-container {showModal ? '' : 'modal-hidden'}" use:clickOutside>
+
+    {#if plataformaSeleccionada}   
       <div class="grid-container">
         {#each plataformaSeleccionada.variables as variable}
           <div class="chart-card" data-title={variable.icono + " " + variable.nombre}>
@@ -192,8 +207,8 @@
 
       <div class="modal-footer">
         
-        <button on:click={action1}>⚙️</button>
-        <button on:click={action2}>🔍</button>
+        <!--<button on:click={action1}>⚙️</button> -->
+        <!--<button on:click={action2}>🔍</button> -->
         <button on:click={closeModal}>❌</button>
       </div>
     {/if}
@@ -203,7 +218,7 @@
 <!-- Estilos optimizados -->
 <style>
   .modal-footer {
-  position: absolute;
+  position: fixed;
   top: 10px;
   right: 10px;
   display: flex;

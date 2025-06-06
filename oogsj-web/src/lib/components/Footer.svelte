@@ -10,10 +10,10 @@
     <h4 class="text-sm font-semibold mb-1">Redes</h4>
     <div class="flex gap-3">
       <a href="https://www.linkedin.com/company/comodoro-conocimiento/posts/?feedView=all" target="_blank" rel="noopener noreferrer">
-        <img src="/imagenes/Logotipos/linkedin.png" alt="LinkedIn" class="w-8 sm:w-11 aspect-square object-contain" />
+        <img src="/imagenes/Iconos/linkedin.png" alt="LinkedIn" class="w-8 sm:w-10 aspect-square object-contain" />
       </a>
-      <a href="https://www.instagram.com/comodoro_conocimiento/" target="_blank" rel="noopener noreferrer" class="relative -top-0.5">
-        <img src="/imagenes/Logotipos/instagram.png" alt="Instagram" class="w-8 sm:w-14 aspect-square object-contain" />
+      <a href="https://www.instagram.com/comodoro_conocimiento/" target="_blank" rel="noopener noreferrer">
+        <img src="/imagenes/Iconos/instagram.png" alt="Instagram" class="w-8 sm:w-10 aspect-square object-contain" />
       </a>
     </div>
   </div>
