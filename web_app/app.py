@@ -9,6 +9,7 @@ import time
 import hashlib
 from flask_mail import Mail, Message
 from flask import Blueprint
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -113,12 +114,13 @@ def get_mareograph_data():
 
 
 # Ruta para obtener datos de la boya en JSON
+
+
 @app.route("/api/buoy")
 def get_buoy_data():
     conn = get_db_connection()
     cur = conn.cursor()
-    
-    # Sensores de la boya CIDMAR-2
+
     sensor_ids = {
         3: "Altura de Olas",
         4: "Periodo de Olas",
@@ -129,24 +131,27 @@ def get_buoy_data():
         9: "Batería"
     }
 
+    diez_dias_atras = datetime.utcnow() - timedelta(days=10)
+
     cur.execute("""
         SELECT sensor_id, timestamp, value
         FROM oogsj_data.measurement
         WHERE sensor_id IN (3, 4, 5, 6, 7, 8, 9)
+          AND timestamp >= %s
         ORDER BY timestamp;
-    """)
+    """, (diez_dias_atras,))
 
     raw_data = cur.fetchall()
     cur.close()
     conn.close()
 
-    # Estructurar los datos agrupados por sensor
     data = {name: [] for name in sensor_ids.values()}
     for sensor_id, timestamp, value in raw_data:
-        variable_name = sensor_ids.get(sensor_id, f"Sensor {sensor_id}")  # Por si falta alguno
+        variable_name = sensor_ids.get(sensor_id, f"Sensor {sensor_id}")
         data[variable_name].append({"timestamp": timestamp, "value": value})
 
     return jsonify(data)
+
 
 
 
@@ -154,20 +159,24 @@ def get_buoy_data():
 def get_tide_forecast_data():
     conn = get_db_connection()
     cur = conn.cursor()
-    
+
+    diez_dias_atras = datetime.utcnow() - timedelta(days=10)
+
     cur.execute("""
         SELECT timestamp, value
         FROM oogsj_data.measurement
         WHERE sensor_id = 2
+          AND timestamp >= %s
         ORDER BY timestamp;
-    """)
+    """, (diez_dias_atras,))
     
     data = [{"timestamp": row[0], "level": safe_float(row[1])} for row in cur.fetchall()]
-    
+
     cur.close()
     conn.close()
-    
+
     return jsonify(data)
+
 #'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 def safe_float(val):
     try:
@@ -252,7 +261,7 @@ def get_latest_mareograph_data():
 
     return jsonify(data)
 
-#---------------------------Estacion Meteoroloigca --------------------------------------------------------------
+#---------------------------Estacion Meteoroloigca Comodoro Rivadavia Puerto --------------------------------------------------------------
 
 STATION_ID = "160710"
 
@@ -264,17 +273,19 @@ def get_weatherstation_puerto():
 
         cur.execute("""
             SELECT s.name, m.timestamp, m.value, u.symbol
-            FROM oogsj_data.measurement m
-            JOIN oogsj_data.sensor s ON m.sensor_id = s.id
+            FROM oogsj_data.sensor s
             JOIN oogsj_data.unit u ON s.unit_id = u.id
-            WHERE s.name LIKE %s
-            AND m.timestamp = (
-                SELECT MAX(m2.timestamp)
-                FROM oogsj_data.measurement m2
-                WHERE m2.sensor_id = s.id
-            )
+            JOIN oogsj_data.platform p ON s.platform_id = p.id
+            JOIN LATERAL (
+                SELECT timestamp, value
+                FROM oogsj_data.measurement
+                WHERE sensor_id = s.id
+                ORDER BY timestamp DESC
+                LIMIT 1
+            ) m ON true
+            WHERE p.id = 4  -- ID de la estación meteorológica Puerto CR
             ORDER BY s.name;
-        """, (f"%{STATION_ID}%",))
+        """)
 
         data = [
             {
@@ -291,7 +302,48 @@ def get_weatherstation_puerto():
         return jsonify(data)
 
     except Exception as e:
-        print(f"❌ ERROR en /api/weatherstation/puerto: {e}")
+        print(f"❌ ERROR en /api/weatherstation/puertoEstacionComodoro: {e}")
+        return jsonify({"error": "Internal Server Error"}), 500
+    
+#---------------------------Estacion Meteoroloigca Caleta Cordova Puerto --------------------------------------------------------------
+@app.route("/api/weatherstation/puertoEstacionCaleta")
+def get_weatherstation_puertoCaleta():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT s.name, m.timestamp, m.value, u.symbol
+            FROM oogsj_data.sensor s
+            JOIN oogsj_data.unit u ON s.unit_id = u.id
+            JOIN oogsj_data.platform p ON s.platform_id = p.id
+            JOIN LATERAL (
+                SELECT timestamp, value
+                FROM oogsj_data.measurement
+                WHERE sensor_id = s.id
+                ORDER BY timestamp DESC
+                LIMIT 1
+            ) m ON true
+            WHERE p.id = 5  -- ID de la estación meteorológica Caleta Córdova
+            ORDER BY s.name;
+        """)
+
+        data = [
+            {
+                "sensor": row[0],
+                "timestamp": row[1].isoformat(),
+                "value": float(row[2]),
+                "unit": row[3]
+            }
+            for row in cur.fetchall()
+        ]
+
+        cur.close()
+        conn.close()
+        return jsonify(data)
+
+    except Exception as e:
+        print(f"❌ ERROR en /api/weatherstation/puertoEstacionCaleta: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
 
 
