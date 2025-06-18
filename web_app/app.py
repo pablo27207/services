@@ -280,6 +280,19 @@ def get_weatherstation_puerto():
                 SELECT timestamp, value
                 FROM oogsj_data.measurement
                 WHERE sensor_id = s.id
+                  AND (
+                      (
+                        s.name ILIKE '%wind_speed%' OR
+                        s.name ILIKE '%wind_gust%' OR
+                        s.name ILIKE '%wind_chill%'
+                      )
+                      AND value >= 0
+                      OR NOT (
+                        s.name ILIKE '%wind_speed%' OR
+                        s.name ILIKE '%wind_gust%' OR
+                        s.name ILIKE '%wind_chill%'
+                      )
+                  )
                 ORDER BY timestamp DESC
                 LIMIT 1
             ) m ON true
@@ -304,6 +317,7 @@ def get_weatherstation_puerto():
     except Exception as e:
         print(f"❌ ERROR en /api/weatherstation/puertoEstacionComodoro: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
+
     
 #---------------------------Estacion Meteoroloigca Caleta Cordova Puerto --------------------------------------------------------------
 @app.route("/api/weatherstation/puertoEstacionCaleta")
@@ -321,6 +335,20 @@ def get_weatherstation_puertoCaleta():
                 SELECT timestamp, value
                 FROM oogsj_data.measurement
                 WHERE sensor_id = s.id
+                  AND (
+                      -- Si es sensor de viento, filtrar valores negativos
+                      (
+                        s.name ILIKE '%wind_speed%' OR
+                        s.name ILIKE '%wind_gust%' OR
+                        s.name ILIKE '%wind_chill%'
+                      )
+                      AND value >= 0
+                      OR NOT (
+                        s.name ILIKE '%wind_speed%' OR
+                        s.name ILIKE '%wind_gust%' OR
+                        s.name ILIKE '%wind_chill%'
+                      )
+                  )
                 ORDER BY timestamp DESC
                 LIMIT 1
             ) m ON true
@@ -345,6 +373,41 @@ def get_weatherstation_puertoCaleta():
     except Exception as e:
         print(f"❌ ERROR en /api/weatherstation/puertoEstacionCaleta: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
+    
+#-----------------------------Endpoint prueba para ver datos erroneos-------------------------------------------------------------------------------
+@app.route("/api/mediciones_negativas")
+def mediciones_negativas():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT s.name, m.value, m.timestamp, u.symbol
+            FROM oogsj_data.measurement m
+            JOIN oogsj_data.sensor s ON m.sensor_id = s.id
+            JOIN oogsj_data.unit u ON s.unit_id = u.id
+            WHERE m.value < 0
+            ORDER BY m.timestamp DESC;
+        """)
+
+        datos = [
+            {
+                "sensor": row[0],
+                "valor": row[1],
+                "timestamp": row[2].isoformat(),
+                "unidad": row[3]
+            }
+            for row in cur.fetchall()
+        ]
+
+        cur.close()
+        conn.close()
+        return jsonify(datos)
+
+    except Exception as e:
+        print(f"❌ ERROR en /api/mediciones_negativas: {e}")
+        return jsonify({"error": "Internal Server Error"}), 500
+
 
 
 

@@ -2,8 +2,15 @@ import requests
 import psycopg2
 from datetime import datetime
 import time
+import logging
 from .config import get_env_var
 
+# Configurar logging para registrar valores descartados
+logging.basicConfig(
+    filename="wind_data_filter.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 class WeatherCCScraper:
     API_KEY = get_env_var("API_KEY_MUELLE")
@@ -24,6 +31,7 @@ class WeatherCCScraper:
 
     @staticmethod
     def convertir_a_si(nombre, valor):
+        """Convierte valores a unidades del Sistema Internacional (SI)."""
         if nombre in ["Temperatura Exterior", "Temperatura Interior", "Sensación Térmica", "Punto de Rocío", "Índice de Calor"]:
             return (valor - 32) * 5 / 9  # °F → °C
         elif nombre in ["Velocidad del Viento", "Viento Promedio 10 min", "Ráfaga de Viento 10 min"]:
@@ -36,6 +44,7 @@ class WeatherCCScraper:
 
     @staticmethod
     def fetch_data():
+        """Consulta la API de WeatherLink y devuelve los datos crudos."""
         timestamp = int(time.time())
         url = f"https://api.weatherlink.com/v2/current/{WeatherCCScraper.STATION_ID}?t={timestamp}&api-key={WeatherCCScraper.API_KEY}"
         headers = {
@@ -52,6 +61,7 @@ class WeatherCCScraper:
 
     @staticmethod
     def fetch_station_data():
+        """Procesa y guarda los datos en la base de datos."""
         data = WeatherCCScraper.fetch_data()
         if not data:
             return
@@ -88,8 +98,19 @@ class WeatherCCScraper:
         for nombre, (clave_json, unidad_si, simbolo_si) in variables.items():
             if clave_json in data and data[clave_json] is not None:
                 valor_si = WeatherCCScraper.convertir_a_si(nombre, data[clave_json])
+
+                # ================= VALIDACIÓN DE RANGO PARA VARIABLES DE VIENTO ===============
+                if nombre in ["Velocidad del Viento", "Viento Promedio 10 min", "Ráfaga de Viento 10 min"]:
+                    if valor_si < 0 or valor_si > 100:  # ❗ descartamos si es negativo o mayor a 100 m/s
+                        msg = f"Valor fuera de rango descartado para {nombre}: {valor_si:.2f} m/s (timestamp: {timestamp})"
+                        print(f"⚠️ {msg}")           # Mostramos por consola
+                        logging.info(msg)            # Y lo registramos en el archivo log
+                        continue                     # ⛔ Saltamos al siguiente dato
+                # =============================================================================
+
                 sensor_name = f"Sensor Virtual - {clave_json} - {WeatherCCScraper.STATION_ID}"
 
+                # Asegurar existencia de variable
                 cur.execute("SELECT id FROM oogsj_data.variable WHERE name = %s", (nombre,))
                 var = cur.fetchone()
                 if not var:
@@ -98,6 +119,7 @@ class WeatherCCScraper:
                 else:
                     variable_id = var[0]
 
+                # Asegurar existencia de unidad
                 cur.execute("SELECT id FROM oogsj_data.unit WHERE symbol = %s", (simbolo_si,))
                 unit = cur.fetchone()
                 if not unit:
@@ -107,6 +129,7 @@ class WeatherCCScraper:
                 else:
                     unit_id = unit[0]
 
+                # Asegurar existencia de sensor
                 cur.execute("SELECT id FROM oogsj_data.sensor WHERE name = %s", (sensor_name,))
                 sensor = cur.fetchone()
                 if not sensor:
@@ -136,6 +159,7 @@ class WeatherCCScraper:
                 except Exception as e:
                     print(f"❌ Error insertando {nombre}: {e}")
                     conn.rollback()
+
 
         conn.commit()
         cur.close()

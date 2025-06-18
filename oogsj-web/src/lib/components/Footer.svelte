@@ -35,6 +35,12 @@
        <a href="https://www.linkedin.com/company/gipis-unpsjb/posts/?feedView=all" target="_blank" rel="noopener noreferrer">
         <img src="/imagenes/Logotipos/gipis-blanco.png" alt="GIPIS" class="h-16" />
       </a> 
+      <a href="https://puertocomodororivadavia.ar" target="_blank" rel="noopener noreferrer">
+        <img src="/imagenes/Logotipos/logo-puerto-bien.png" alt="Puerto" class="h-16" />
+      </a>
+      <a href="https://www.pampazul.gob.ar/wp-content/uploads/2023/09/infografiaROMA_con_logos.pdf" target="_blank" rel="noopener noreferrer">
+        <img src="/imagenes/Logotipos/Roma-Logo.png" alt="ROMA" class="h-10" />
+      </a> 
        <!-- <a href="https://www.roma.gob.ar" target="_blank" rel="noopener noreferrer">-->
        <!-- <img src="/imagenes/Logotipos/Roma-Logo.png" alt="ROMA" class="h-10" />-->
       <!--</a> 

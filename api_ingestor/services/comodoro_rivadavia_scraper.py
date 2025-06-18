@@ -3,6 +3,14 @@ import psycopg2
 import time
 from datetime import datetime
 import os
+import logging
+
+# Configurar logging
+logging.basicConfig(
+    filename="wind_data_filter.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 API_KEY = os.getenv("API_KEY_PUERTO")
 API_SECRET = os.getenv("API_SECRET_PUERTO")
@@ -20,15 +28,33 @@ DB_CONFIG = {
 
 
 class WeatherCRScraper:
+
     @staticmethod
     def convertir_a_si(nombre, valor):
-        if nombre == "Temperatura Exterior":
-            return (valor - 32) * 5 / 9
-        elif nombre == "Presión Barométrica":
-            return valor * 33.8639
-        elif nombre == "Velocidad del Viento":
-            return valor * 0.44704
+        if nombre in ["Temperatura Exterior"]:
+            return (valor - 32) * 5 / 9  # °F → °C
+        elif nombre in ["Presión Barométrica"]:
+            return valor * 33.8639       # inHg → hPa
+        elif nombre in ["Velocidad del Viento"]:
+            return valor * 0.44704       # mph → m/s
         return valor
+
+    @staticmethod
+    def fetch_data():
+        timestamp = int(time.time())
+        url = f"https://api.weatherlink.com/v2/current/{STATION_ID}?t={timestamp}&api-key={API_KEY}"
+        headers = {
+            "x-api-secret": API_SECRET,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            return response.json()["sensors"][0]["data"][0]
+        else:
+            print("❌ Error al consultar la API:", response.status_code)
+            return None
 
     @staticmethod
     def asegurar_sensor_y_variable(conn, variable_name, unit_name, unit_symbol, sensor_name, platform_id):
@@ -66,23 +92,6 @@ class WeatherCRScraper:
         return sensor_id
 
     @staticmethod
-    def fetch_data():
-        timestamp = int(time.time())
-        url = f"https://api.weatherlink.com/v2/current/{STATION_ID}?t={timestamp}&api-key={API_KEY}"
-        headers = {
-            "x-api-secret": API_SECRET,
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
-
-        response = requests.get(url, headers=headers)
-        if response.status_code == 200:
-            return response.json()["sensors"][0]["data"][0]
-        else:
-            print("❌ Error al consultar la API:", response.status_code)
-            return None
-
-    @staticmethod
     def fetch_station_data():
         data = WeatherCRScraper.fetch_data()
         if not data:
@@ -110,8 +119,15 @@ class WeatherCRScraper:
         for nombre, (clave_json, unidad_si, simbolo_si) in variables.items():
             if clave_json in data and data[clave_json] is not None:
                 valor_si = WeatherCRScraper.convertir_a_si(nombre, data[clave_json])
-                sensor_name = f"Sensor Virtual - {clave_json} - {STATION_ID}"
 
+                # Validación: descartar valores negativos para viento
+                if nombre == "Velocidad del Viento" and valor_si < 0:
+                    msg = f"Valor negativo descartado para {nombre}: {valor_si:.2f} m/s (timestamp: {timestamp})"
+                    print(f"⚠️ {msg}")
+                    logging.info(msg)
+                    continue
+
+                sensor_name = f"Sensor Virtual - {clave_json} - {STATION_ID}"
                 sensor_id = WeatherCRScraper.asegurar_sensor_y_variable(
                     conn, nombre, unidad_si, simbolo_si, sensor_name, platform_id
                 )
