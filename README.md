@@ -13,3 +13,22 @@ La arquitectura está basada en contenedores Docker con Nginx como proxy inverso
 ---
 
 🛰️ Desarrollado para monitoreo ambiental y análisis científico en la región del Golfo San Jorge.
+
+
+----------------------------------------------------------------------------------------------------------
+
+# OOGSJ - Observation System
+
+This system is part of the Golfo San Jorge Oceanographic Observatory (OOGSJ) and provides:
+
+- Real-time visualization of data from oceanographic platforms, weather stations, and tide gauges.
+- Integration with remote sensors via external APIs (e.g., WeatherLink).
+- Interactive graphs and georeferenced maps using Leaflet and D3.js.
+- Management of multiple platforms, measured variables, and technical users.
+- Static frontend built with SvelteKit and backend with Flask + PostgreSQL.
+
+The architecture is containerized using Docker, with Nginx as a reverse proxy and HTTPS enabled.
+
+---
+
+🛰️ Developed for environmental monitoring and scientific analysis in the Golfo San Jorge region.
