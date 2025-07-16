@@ -2,11 +2,12 @@ import adapter from '@sveltejs/adapter-static';
 import preprocess from 'svelte-preprocess';
 
 const config = {
-  preprocess: preprocess(), // 👈 funciona en todas las versiones
+  preprocess: preprocess(),
+
   kit: {
     adapter: adapter({
       pages: 'build',
-      assets: 'build',
+      assets: 'build', // ✅ esta línea es importante
       fallback: 'index.html',
       precompress: false
     }),
@@ -14,7 +15,9 @@ const config = {
       base: '',
       assets: ''
     }
+    // 🚫 sin prerender, como querés
   }
 };
 
 export default config;
+

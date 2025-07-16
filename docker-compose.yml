@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   db:
     image: postgres:15
@@ -14,6 +16,8 @@ services:
       timeout: 5s
       start_period: 60s
       retries: 10
+    networks:
+      - oogsj_network
 
   cache:
     image: redis:alpine
@@ -24,9 +28,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - oogsj_network
 
   api_ingestor:
-    build: 
+    build:
       context: ./api_ingestor
       dockerfile: Dockerfile
     container_name: api_ingestor
@@ -41,9 +47,11 @@ services:
       - ./api_ingestor:/app
       - ./logs:/app/logs
     restart: unless-stopped
+    networks:
+      - oogsj_network
 
   celery_worker:
-    build: 
+    build:
       context: ./api_ingestor
       dockerfile: Dockerfile
     container_name: celery_worker
@@ -61,9 +69,11 @@ services:
       - ./logs:/app/logs
     restart: always
     command: celery -A celery_tasks worker --loglevel=info
-  
+    networks:
+      - oogsj_network
+
   celery_beat:
-    build: 
+    build:
       context: ./api_ingestor
       dockerfile: Dockerfile
     container_name: celery_beat
@@ -79,8 +89,9 @@ services:
       - ./logs:/app/logs
     restart: always
     command: celery -A celery_tasks beat --loglevel=info
+    networks:
+      - oogsj_network
 
-    
   web_app:
     build: ./web_app
     container_name: web_app
@@ -92,7 +103,19 @@ services:
     restart: always
     volumes:
       - ./web_app:/app
-  
+    networks:
+      - oogsj_network
+
+  frontend_oogsj:
+    build:
+      context: ./oogsj-web
+    container_name: frontend_oogsj
+    restart: always
+    depends_on:
+      - web_app
+    networks:
+      - oogsj_network
+
   nginx:
     image: nginx:latest
     container_name: nginx_proxy
@@ -109,7 +132,8 @@ services:
       - "80:80"
       - "443:443"
     restart: always
-
+    networks:
+      - oogsj_network
 
   certbot:
     image: certbot/certbot
@@ -117,24 +141,14 @@ services:
     volumes:
       - ./certbot/www:/var/www/certbot
       - ./certbot/conf:/etc/letsencrypt
-    entrypoint: /bin/sh -c 'trap exit TERM; while :; do sleep 12h & wait $${!}; certbot renew; done'
-
-
-
-  frontend_oogsj:
-    build:
-      context: ./oogsj-web
-    container_name: frontend_oogsj
-    restart: always
-    depends_on:
-      - web_app
-
- 
-
+    entrypoint: /bin/sh -c 'trap exit TERM; while :; do sleep 12h & wait $${!}; certbot renew;'
+    networks:
+      - oogsj_network
 
 volumes:
   db_data:
 
 networks:
-    default:
-      name: oogsj_network
+  oogsj_network:
+    name: oogsj_network
+
