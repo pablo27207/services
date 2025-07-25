@@ -20,3 +20,24 @@ docker exec certbot certbot renew
 Para testear si el certificado es válido:
 curl -v https://oogsj.gob.ar
 
+
+
+----------------------------------------------------
+Comandos útiles
+
+docker compose ps           # Ver qué está corriendo
+docker logs nginx_proxy     # Ver errores de NGINX
+docker exec nginx_proxy nginx -t   # Test de configuración
+docker restart nginx_proxy  # Reiniciar NGINX tras cambios
+
+----------------------------------------------------------------
+
+ Recomendaciones
+
+Nunca subas .env o certificados reales.
+
+Usá .gitignore para proteger todo lo sensible.
+
+Nunca hagas merge desde main sin revisar manualmente los cambios.
+
+Solo modificar nginx.prod.conf si sabés lo que hacés.
