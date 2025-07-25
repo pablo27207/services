@@ -1,104 +1,79 @@
 # ⚡ Archivos sensibles
 .env
+*.env.*
+fullchain.pem
+privkey.pem
 
-# 🐍 Archivos y carpetas de Python
+# 🐍 Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 *.egg-info/
-
-# 🔄 Dependencias de Python
 venv/
-.env/
 *.venv
-pip-log.txt
-pip-delete-this-directory.txt
 
-# 📦 Archivos y carpetas de Docker
+# 🔄 Docker
 *.dockerfile
 docker-compose.override.yml
 db_data/
 volumes/
 cache/
 
-# 🗂 Archivos de bases de datos
-#*.sqlite3
-#*.db
-#*.sql
+# 🗂 Bases de datos
+# *.sqlite3
+# *.db
+# *.sql
 
-# ⚙️ Configuración de IDEs (VSCode, PyCharm)
+# ⚙️ IDEs
 .vscode/
 .idea/
 *.iml
 
-# 📝 Logs y archivos de ejecución
+# 📝 Logs
 logs/
 *.log
 nohup.out
 
-# 📂 Archivos de Celery
+# 🐇 Celery
 celerybeat-schedule
 celerybeat.pid
 
-# 📊 Archivos de datos o dumps
+# 📊 Datos
 data/
 *.csv
-#*.json
+# *.json
 *.xml
 *.rdf
 
-# 🖼 Archivos de caché de D3.js
-*.DS_Store
+# 🖼 Archivos del sistema
+.DS_Store
 Thumbs.db
-sistema-oogsj/
 
-
-
-# 🛑 Ignorar Python en Flask (Backend)
+# 🛑 Backend Flask
 oogsj-backend/__pycache__/
 oogsj-backend/*.pyc
 oogsj-backend/*.pyo
 oogsj-backend/venv/
 
-# 🛑 Ignorar Svelte (Frontend)
+# 🛑 Frontend Svelte
 oogsj-frontend/node_modules/
 oogsj-frontend/build/
 oogsj-frontend/.svelte-kit/
-
-# 🛑 Ignorar archivos del sistema
-.DS_Store
-Thumbs.db
-
-# Ignorar archivos generados por SvelteKit
-# Ignorar dependencias de Node
-node_modules/
-# Output de producción SvelteKit
-.build/
-dist/
-build/
-
-# Archivos del entorno
-.env
-*.env.*
-
-# Archivos del editor
-.vscode/
-.idea/
-
-# Archivos de sistema
-.DS_Store
-Thumbs.db
-
-
 .svelte-kit/
 build/
 types/
+node_modules/
+.build/
+dist/
 
-# Evitar subir archivos de Certbot y otros archivos no productivos
-certbot/conf/live/
-certbot/conf/archive/
-certbot/conf/renewal/
+# 🚫 Certbot y configuración de producción
+certbot/
+certbot/conf/
 certbot/www/
+nginx/nginx.prod.conf
+letsencrypt/
+
+# ❌ Otros
+sistema-oogsj/
 oogsj-web/svelte.config.jsx
-oogsj-web/nginx.con

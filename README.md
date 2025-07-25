@@ -32,3 +32,19 @@ The architecture is containerized using Docker, with Nginx as a reverse proxy an
 ---
 
 🛰️ Developed for environmental monitoring and scientific analysis in the Golfo San Jorge region.
+
+
+------------------------------------------------------------------------------------------------------
+## 🔁 Flujo de trabajo de ramas
+
+- `Developer-Franco`: desarrollo local, sin Certbot ni SSL.
+- `main`: staging, se limpia y testea antes de pasar a producción.
+- `master-produccion`: despliegue final, con Certbot, HTTPS y dominios oficiales.
+
+### ⚙️ Comandos útiles
+
+- Levantar entorno local:
+  docker compose up -d --build
+
+- Levantar entorno producción:
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
