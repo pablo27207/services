@@ -195,9 +195,9 @@ function clickOutside(node) {
 {:else if plataformaSeleccionada.nombre.toLowerCase().includes("boya")}
   <GraficosBoya />
   {:else if plataformaSeleccionada.nombre.toLowerCase().includes("caleta")}
-  <PlataformaNoHabilitada />
+  <EstacionCaleta />
 {:else if plataformaSeleccionada.nombre.toLowerCase().includes("puerto")}
-<PlataformaNoHabilitada />
+<EstacionPuerto />
 {:else}
   <PlataformaNoHabilitada />
 {/if}

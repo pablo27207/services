@@ -116,7 +116,7 @@ services:
     networks:
       - oogsj_network
 
-  nginx:
+  nginx_proxy:
     image: nginx:latest
     container_name: nginx_proxy
     depends_on:

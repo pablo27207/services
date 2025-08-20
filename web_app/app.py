@@ -11,6 +11,7 @@ from flask_mail import Mail, Message
 from flask import Blueprint
 from datetime import datetime, timedelta
 
+
 app = Flask(__name__)
 
 #------------Para enviar emails--------------------------------------
@@ -101,7 +102,7 @@ def get_mareograph_data():
     cur.execute("""
         SELECT timestamp, value
         FROM oogsj_data.measurement
-        WHERE sensor_id = 1
+        WHERE sensor_id = 1 AND timestamp >= NOW() - INTERVAL '30 days'
         ORDER BY timestamp;
     """)
     
@@ -317,6 +318,96 @@ def get_weatherstation_puerto():
     except Exception as e:
         print(f"❌ ERROR en /api/weatherstation/puertoEstacionComodoro: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
+
+
+
+
+#--------------------------- Histórico últimos 15 días - Estación Meteorológica Caleta Córdova funciona correctamente---------------------------
+#---los datos no son historicos, pero traigo todos los datos de lo sultimos 15 dias. Trae algunas variables, vacias tengo que ver
+@app.route("/api/weatherstation/puertoEstacionCaleta/15days")
+def get_weatherstation_puertoCaleta_historico():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        fecha_inicio = datetime.utcnow() - timedelta(days=15)
+
+        # Traer todos los sensores de la estación (platform_id = 5)
+        cur.execute("""
+            SELECT id, name FROM oogsj_data.sensor
+            WHERE platform_id = 5
+        """)
+        sensores = cur.fetchall()
+        sensor_map = {sensor_id: name for sensor_id, name in sensores}
+
+        if not sensor_map:
+            return jsonify({"error": "No se encontraron sensores para la estación"}), 404
+
+        sensor_ids = tuple(sensor_map.keys())
+
+        # Traer mediciones para esos sensores en los últimos 15 días
+        cur.execute(f"""
+            SELECT sensor_id, timestamp, value
+            FROM oogsj_data.measurement
+            WHERE sensor_id IN %s
+              AND timestamp >= %s
+            ORDER BY timestamp;
+        """, (sensor_ids, fecha_inicio))
+
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        # Estructura de salida similar a /api/buoy
+        data = {name: [] for name in sensor_map.values()}
+        for sensor_id, timestamp, value in rows:
+            nombre_variable = sensor_map.get(sensor_id, f"Sensor {sensor_id}")
+            data[nombre_variable].append({
+                "timestamp": timestamp.isoformat(),
+                "value": float(value)
+            })
+
+        return jsonify(data)
+
+    except Exception as e:
+        import traceback
+        print(f"❌ ERROR en /api/weatherstation/puertoEstacionCaleta/historico:\n{traceback.format_exc()}")
+        return jsonify({"error": "Internal Server Error"}), 500
+
+
+
+#-------------------------------test---------------------------------------------------------
+@app.route("/api/test/historico")
+def test_historico():
+    data = {
+        "temp_out - 191512": [
+            {
+                "timestamp": "2025-08-05T10:00:00",
+                "value": 12.5,
+                "unit": "°C"
+            },
+            {
+                "timestamp": "2025-08-05T09:00:00",
+                "value": 13.1,
+                "unit": "°C"
+            }
+        ],
+        "wind_speed_avg - 191512": [
+            {
+                "timestamp": "2025-08-05T10:00:00",
+                "value": 5.82112,
+                "unit": "m/s"
+            },
+            {
+                "timestamp": "2025-08-05T09:00:00",
+                "value": 4.2,
+                "unit": "m/s"
+            }
+        ]
+    }
+
+    return jsonify(data)
+
 
     
 #---------------------------Estacion Meteoroloigca Caleta Cordova Puerto --------------------------------------------------------------
