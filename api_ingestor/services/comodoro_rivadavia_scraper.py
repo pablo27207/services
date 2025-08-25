@@ -1,7 +1,7 @@
 import requests
 import psycopg2
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 import logging
 
@@ -28,14 +28,23 @@ DB_CONFIG = {
 
 
 class WeatherCRScraper:
+    # Valores centinela típicos de WeatherLink (equivalen a “sin dato”)
+    SENTINEL = {-1, 255, 32767}
+
+    @staticmethod
+    def es_nulo(val):
+        """True si el valor es None o un centinela."""
+        return val is None or (isinstance(val, (int, float)) and val in WeatherCRScraper.SENTINEL)
 
     @staticmethod
     def convertir_a_si(nombre, valor):
-        if nombre in ["Temperatura Exterior"]:
+        if WeatherCRScraper.es_nulo(valor):
+            return None
+        if nombre == "Temperatura Exterior":
             return (valor - 32) * 5 / 9  # °F → °C
-        elif nombre in ["Presión Barométrica"]:
+        elif nombre == "Presión Barométrica":
             return valor * 33.8639       # inHg → hPa
-        elif nombre in ["Velocidad del Viento"]:
+        elif nombre == "Velocidad del Viento":
             return valor * 0.44704       # mph → m/s
         return valor
 
@@ -49,11 +58,20 @@ class WeatherCRScraper:
             "Accept": "application/json"
         }
 
-        response = requests.get(url, headers=headers)
-        if response.status_code == 200:
+        try:
+            response = requests.get(url, headers=headers, timeout=12)
+        except Exception as e:
+            print(f"❌ Error de red consultando la API: {e}")
+            return None
+
+        if response.status_code != 200:
+            print("❌ Error al consultar la API:", response.status_code, response.text)
+            return None
+
+        try:
             return response.json()["sensors"][0]["data"][0]
-        else:
-            print("❌ Error al consultar la API:", response.status_code)
+        except Exception as e:
+            print(f"❌ JSON inesperado: {e} / {response.text}")
             return None
 
     @staticmethod
@@ -97,32 +115,46 @@ class WeatherCRScraper:
         if not data:
             return
 
+        # === Timestamp simple y “a prueba de futuro” ===
+        # Usa generated_at (UTC) si existe; si no, usa ts (UTC).
+        ts = data.get("generated_at", data.get("ts", int(time.time())))
+        timestamp = datetime.fromtimestamp(ts, tz=timezone.utc)
+        now_utc = datetime.now(timezone.utc)
+        if timestamp > now_utc:
+            timestamp = now_utc  # recorte por seguridad
+
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
+        try:
+            cur.execute("SELECT id FROM oogsj_data.platform WHERE name = %s", (PLATFORM_NAME,))
+            platform = cur.fetchone()
+            if not platform:
+                print(f"❌ Plataforma '{PLATFORM_NAME}' no encontrada.")
+                return
+            platform_id = platform[0]
 
-        cur.execute("SELECT id FROM oogsj_data.platform WHERE name = %s", (PLATFORM_NAME,))
-        platform = cur.fetchone()
-        if not platform:
-            print(f"❌ Plataforma '{PLATFORM_NAME}' no encontrada.")
-            return
-        platform_id = platform[0]
+            variables = {
+                "Temperatura Exterior": ("temp_out", "Grados Celsius", "°C"),
+                "Humedad Exterior": ("hum_out", "Porcentaje", "%"),
+                "Presión Barométrica": ("bar", "Hectopascales", "hPa"),
+                "Velocidad del Viento": ("wind_speed", "Metros por segundo", "m/s")
+            }
 
-        timestamp = datetime.fromtimestamp(data["ts"])
+            for nombre, (clave_json, unidad_si, simbolo_si) in variables.items():
+                # Saltear None/centinelas ANTES de convertir
+                if clave_json not in data:
+                    continue
+                valor_crudo = data[clave_json]
+                if WeatherCRScraper.es_nulo(valor_crudo):
+                    continue
 
-        variables = {
-            "Temperatura Exterior": ("temp_out", "Grados Celsius", "°C"),
-            "Humedad Exterior": ("hum_out", "Porcentaje", "%"),
-            "Presión Barométrica": ("bar", "Hectopascales", "hPa"),
-            "Velocidad del Viento": ("wind_speed", "Metros por segundo", "m/s")
-        }
+                valor_si = WeatherCRScraper.convertir_a_si(nombre, valor_crudo)
+                if valor_si is None:
+                    continue
 
-        for nombre, (clave_json, unidad_si, simbolo_si) in variables.items():
-            if clave_json in data and data[clave_json] is not None:
-                valor_si = WeatherCRScraper.convertir_a_si(nombre, data[clave_json])
-
-                # Validación: descartar valores negativos para viento
+                # Validación mínima: viento no negativo
                 if nombre == "Velocidad del Viento" and valor_si < 0:
-                    msg = f"Valor negativo descartado para {nombre}: {valor_si:.2f} m/s (timestamp: {timestamp})"
+                    msg = f"Valor negativo descartado para {nombre}: {valor_si:.2f} m/s (ts: {timestamp})"
                     print(f"⚠️ {msg}")
                     logging.info(msg)
                     continue
@@ -143,12 +175,16 @@ class WeatherCRScraper:
                             %s
                         )
                         ON CONFLICT (sensor_id, timestamp) DO NOTHING;
-                    """, (sensor_id, timestamp, valor_si, LOCATION_ID))
-                    print(f"✅ Insertado: {nombre} = {valor_si:.2f}")
+                    """, (sensor_id, timestamp, float(valor_si), LOCATION_ID))
+                    print(f"✅ Insertado: {nombre} = {valor_si:.2f} {simbolo_si} @ {timestamp}")
                 except Exception as e:
                     print(f"❌ Error insertando {nombre}: {e}")
                     conn.rollback()
 
-        conn.commit()
-        cur.close()
-        conn.close()
+            conn.commit()
+        finally:
+            try:
+                cur.close()
+            except Exception:
+                pass
+            conn.close()
