@@ -187,7 +187,7 @@ def safe_float(val):
         return 0.0
 
 
-    #-------------------------------------------Ultimo endpoit los ultimos datos sensados de la boya 
+#-------------------------------------------Ultimo endpoit los ultimos datos sensados de la boya 
 @app.route("/api/buoy/latest")
 def get_latest_buoy_data():
     conn = get_db_connection()
@@ -263,50 +263,45 @@ def get_latest_mareograph_data():
     return jsonify(data)
 
 #---------------------------Estacion Meteoroloigca Comodoro Rivadavia Puerto --------------------------------------------------------------
+@app.route("/api/appcr/puerto", methods=["GET"])
+def get_puerto_data():
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Internal Server Error - Database connection failed"}), 500
 
-STATION_ID = "160710"
-
-@app.route("/api/weatherstation/puertoEstacionComodoro")
-def get_weatherstation_puerto():
     try:
-        conn = get_db_connection()
         cur = conn.cursor()
 
+        # Filtramos por nombre de plataforma (más robusto que hardcodear un id numérico)
         cur.execute("""
-            SELECT s.name, m.timestamp, m.value, u.symbol
+            SELECT 
+                s.name AS sensor,
+                m."timestamp",
+                m.value,
+                u.symbol AS unit,
+                v.name AS variable
             FROM oogsj_data.sensor s
-            JOIN oogsj_data.unit u ON s.unit_id = u.id
-            JOIN oogsj_data.platform p ON s.platform_id = p.id
+            JOIN oogsj_data.platform p ON p.id = s.platform_id
+            JOIN oogsj_data.unit u ON u.id = s.unit_id
+            JOIN oogsj_data.variable v ON v.id = s.variable_id
             JOIN LATERAL (
-                SELECT timestamp, value
-                FROM oogsj_data.measurement
-                WHERE sensor_id = s.id
-                  AND (
-                      (
-                        s.name ILIKE '%wind_speed%' OR
-                        s.name ILIKE '%wind_gust%' OR
-                        s.name ILIKE '%wind_chill%'
-                      )
-                      AND value >= 0
-                      OR NOT (
-                        s.name ILIKE '%wind_speed%' OR
-                        s.name ILIKE '%wind_gust%' OR
-                        s.name ILIKE '%wind_chill%'
-                      )
-                  )
-                ORDER BY timestamp DESC
+                SELECT m2."timestamp", m2.value
+                FROM oogsj_data.measurement m2
+                WHERE m2.sensor_id = s.id
+                ORDER BY m2."timestamp" DESC
                 LIMIT 1
-            ) m ON true
-            WHERE p.id = 4  -- ID de la estación meteorológica Puerto CR
+            ) m ON TRUE
+            WHERE p.name = %s
             ORDER BY s.name;
-        """)
+        """, ('APPCR Puerto CR',))
 
         data = [
             {
                 "sensor": row[0],
-                "timestamp": row[1].isoformat(),
-                "value": float(row[2]),
-                "unit": row[3]
+                "timestamp": row[1].isoformat() if row[1] else None,
+                "value": float(row[2]) if row[2] is not None else None,
+                "unit": row[3],
+                "variable": row[4],
             }
             for row in cur.fetchall()
         ]
@@ -316,143 +311,122 @@ def get_weatherstation_puerto():
         return jsonify(data)
 
     except Exception as e:
-        print(f"❌ ERROR en /api/weatherstation/puertoEstacionComodoro: {e}")
+        print(f"❌ ERROR en /api/appcr/puerto: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
+#------------------------------Estacion al puerto mas facil ultimos dias para el grafico
 
+@app.route("/api/appcr/puerto/history", methods=["GET"])
+def get_puerto_history():
+    """
+    Últimos 10 días de APPCR Puerto CR, agrupados por variable.
+    Formato: { "<variable>": { "unit": "<simbolo>", "data": [ {timestamp, value}, ... ] }, ... }
+    """
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Internal Server Error - Database connection failed"}), 500
 
-
-
-#--------------------------- Histórico últimos 15 días - Estación Meteorológica Caleta Córdova funciona correctamente---------------------------
-#---los datos no son historicos, pero traigo todos los datos de lo sultimos 15 dias. Trae algunas variables, vacias tengo que ver
-@app.route("/api/weatherstation/puertoEstacionCaleta/15days")
-def get_weatherstation_puertoCaleta_historico():
     try:
-        conn = get_db_connection()
         cur = conn.cursor()
 
-        fecha_inicio = datetime.utcnow() - timedelta(days=15)
+        diez_dias_atras = datetime.utcnow() - timedelta(days=10)
 
-        # Traer todos los sensores de la estación (platform_id = 5)
+        # Opción A (robusta): filtrar por nombre de plataforma
         cur.execute("""
-            SELECT id, name FROM oogsj_data.sensor
-            WHERE platform_id = 5
-        """)
-        sensores = cur.fetchall()
-        sensor_map = {sensor_id: name for sensor_id, name in sensores}
+            SELECT 
+                v.name        AS variable_name,
+                m."timestamp" AS ts,
+                m.value       AS val,
+                u.symbol      AS unit
+            FROM oogsj_data.measurement m
+            JOIN oogsj_data.sensor   s ON s.id = m.sensor_id
+            JOIN oogsj_data.platform p ON p.id = s.platform_id
+            JOIN oogsj_data.variable v ON v.id = s.variable_id
+            JOIN oogsj_data.unit     u ON u.id = s.unit_id
+            WHERE p.name = %s
+              AND m."timestamp" >= %s
+            ORDER BY v.name, m."timestamp";
+        """, ('APPCR Puerto CR', diez_dias_atras))
 
-        if not sensor_map:
-            return jsonify({"error": "No se encontraron sensores para la estación"}), 404
-
-        sensor_ids = tuple(sensor_map.keys())
-
-        # Traer mediciones para esos sensores en los últimos 15 días
-        cur.execute(f"""
-            SELECT sensor_id, timestamp, value
-            FROM oogsj_data.measurement
-            WHERE sensor_id IN %s
-              AND timestamp >= %s
-            ORDER BY timestamp;
-        """, (sensor_ids, fecha_inicio))
+        # ---- Opción B (si preferís por patrón en nombre de sensor, Puerto CR suele ser 160710) ----
+        # cur.execute("""
+        #     SELECT 
+        #         v.name        AS variable_name,
+        #         m."timestamp" AS ts,
+        #         m.value       AS val,
+        #         u.symbol      AS unit
+        #     FROM oogsj_data.measurement m
+        #     JOIN oogsj_data.sensor   s ON s.id = m.sensor_id
+        #     JOIN oogsj_data.variable v ON v.id = s.variable_id
+        #     JOIN oogsj_data.unit     u ON u.id = s.unit_id
+        #     WHERE s.name LIKE '%%160710%%'
+        #       AND m."timestamp" >= %s
+        #     ORDER BY v.name, m."timestamp";
+        # """, (diez_dias_atras,))
 
         rows = cur.fetchall()
         cur.close()
         conn.close()
 
-        # Estructura de salida similar a /api/buoy
-        data = {name: [] for name in sensor_map.values()}
-        for sensor_id, timestamp, value in rows:
-            nombre_variable = sensor_map.get(sensor_id, f"Sensor {sensor_id}")
-            data[nombre_variable].append({
-                "timestamp": timestamp.isoformat(),
-                "value": float(value)
+        data = {}
+        for variable_name, ts, val, unit in rows:
+            bucket = data.setdefault(variable_name, {"unit": unit, "data": []})
+            bucket["data"].append({
+                "timestamp": ts.isoformat() if ts else None,
+                "value": float(val) if val is not None else None
             })
 
         return jsonify(data)
 
     except Exception as e:
-        import traceback
-        print(f"❌ ERROR en /api/weatherstation/puertoEstacionCaleta/historico:\n{traceback.format_exc()}")
+        print(f"❌ ERROR en /api/appcr/puerto/history: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
 
 
+#--------------------------endpoint estacion meteorologica caleta cordova ultimos datos ----------------------------------------------------
+### ESTE ES EL CORRECTO, LUEGO VER QUE METODOS SOBRAN Y COMENTARLO
 
-#-------------------------------test---------------------------------------------------------
-@app.route("/api/test/historico")
-def test_historico():
-    data = {
-        "temp_out - 191512": [
-            {
-                "timestamp": "2025-08-05T10:00:00",
-                "value": 12.5,
-                "unit": "°C"
-            },
-            {
-                "timestamp": "2025-08-05T09:00:00",
-                "value": 13.1,
-                "unit": "°C"
-            }
-        ],
-        "wind_speed_avg - 191512": [
-            {
-                "timestamp": "2025-08-05T10:00:00",
-                "value": 5.82112,
-                "unit": "m/s"
-            },
-            {
-                "timestamp": "2025-08-05T09:00:00",
-                "value": 4.2,
-                "unit": "m/s"
-            }
-        ]
-    }
+@app.route("/api/appcr/muelle_cc", methods=["GET"])
+def get_muelle_cc_data():
+    """
+    Obtiene el último registro de cada sensor de la estación "APPCR Muelle CC".
+    """
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Internal Server Error - Database connection failed"}), 500
 
-    return jsonify(data)
-
-
-    
-#---------------------------Estacion Meteoroloigca Caleta Cordova Puerto --------------------------------------------------------------
-@app.route("/api/weatherstation/puertoEstacionCaleta")
-def get_weatherstation_puertoCaleta():
     try:
-        conn = get_db_connection()
         cur = conn.cursor()
 
+        # Usamos una subconsulta con LATERAL JOIN para obtener el registro más reciente
+        # para cada sensor que contenga el identificador '160710' en su nombre.
         cur.execute("""
-            SELECT s.name, m.timestamp, m.value, u.symbol
+            SELECT 
+                s.name AS sensor,
+                m.timestamp,
+                m.value,
+                u.symbol AS unit,
+                v.name AS variable
             FROM oogsj_data.sensor s
             JOIN oogsj_data.unit u ON s.unit_id = u.id
-            JOIN oogsj_data.platform p ON s.platform_id = p.id
+            JOIN oogsj_data.variable v ON v.id = s.variable_id
             JOIN LATERAL (
                 SELECT timestamp, value
                 FROM oogsj_data.measurement
                 WHERE sensor_id = s.id
-                  AND (
-                      -- Si es sensor de viento, filtrar valores negativos
-                      (
-                        s.name ILIKE '%wind_speed%' OR
-                        s.name ILIKE '%wind_gust%' OR
-                        s.name ILIKE '%wind_chill%'
-                      )
-                      AND value >= 0
-                      OR NOT (
-                        s.name ILIKE '%wind_speed%' OR
-                        s.name ILIKE '%wind_gust%' OR
-                        s.name ILIKE '%wind_chill%'
-                      )
-                  )
                 ORDER BY timestamp DESC
                 LIMIT 1
             ) m ON true
-            WHERE p.id = 5  -- ID de la estación meteorológica Caleta Córdova
+            WHERE s.name LIKE '%%160710%%'
             ORDER BY s.name;
         """)
 
         data = [
             {
                 "sensor": row[0],
-                "timestamp": row[1].isoformat(),
-                "value": float(row[2]),
-                "unit": row[3]
+                "timestamp": row[1].isoformat() if row[1] else None,
+                "value": float(row[2]) if row[2] is not None else None,
+                "unit": row[3],
+                "variable": row[4]
             }
             for row in cur.fetchall()
         ]
@@ -462,9 +436,73 @@ def get_weatherstation_puertoCaleta():
         return jsonify(data)
 
     except Exception as e:
-        print(f"❌ ERROR en /api/weatherstation/puertoEstacionCaleta: {e}")
+        print(f"❌ ERROR en /api/appcr/muelle_cc: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
     
+#--------------------------historico muelle cc este es el real --------------------------------------------
+#te trae en formato json todos los datos en los ultimos 10 dias
+@app.route("/api/appcr/muelle_cc/history", methods=["GET"])
+def get_muelle_cc_history():
+    """
+    Obtiene todos los datos de los últimos 15 días de la estación "APPCR Muelle CC",
+    organizados por variable para ser usados en gráficas.
+    """
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Internal Server Error - Database connection failed"}), 500
+
+    try:
+        cur = conn.cursor()
+        
+        # Calcula el punto de inicio para la consulta (15 días atrás)
+        quinze_dias_atras = datetime.utcnow() - timedelta(days=15)
+
+        # Consulta que trae todos los datos de los sensores del muelle_cc de los últimos 15 días
+        cur.execute("""
+            SELECT 
+                v.name AS variable_name,
+                m.timestamp,
+                m.value,
+                u.symbol AS unit
+            FROM oogsj_data.measurement m
+            JOIN oogsj_data.sensor s ON s.id = m.sensor_id
+            JOIN oogsj_data.variable v ON v.id = s.variable_id
+            JOIN oogsj_data.unit u ON u.id = s.unit_id
+            WHERE 
+                s.name LIKE '%%160710%%'
+                AND m.timestamp >= %s
+            ORDER BY 
+                v.name, m.timestamp;
+        """, (quinze_dias_atras,))
+
+        raw_data = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        # Procesa los datos para organizarlos en un formato amigable para gráficas
+        data = {}
+        for row in raw_data:
+            variable_name, timestamp, value, unit = row
+            if variable_name not in data:
+                data[variable_name] = {
+                    "unit": unit,
+                    "data": []
+                }
+            data[variable_name]["data"].append({
+                "timestamp": timestamp.isoformat(),
+                "value": float(value)
+            })
+            
+        return jsonify(data)
+
+    except Exception as e:
+        print(f"❌ ERROR en /api/appcr/muelle_cc/history: {e}")
+        return jsonify({"error": "Internal Server Error"}), 500
+
+
+
+
+
 #-----------------------------Endpoint prueba para ver datos erroneos-------------------------------------------------------------------------------
 @app.route("/api/mediciones_negativas")
 def mediciones_negativas():
