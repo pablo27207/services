@@ -313,6 +313,73 @@ def get_puerto_data():
     except Exception as e:
         print(f"❌ ERROR en /api/appcr/puerto: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
+#------------------------------Estacion al puerto mas facil ultimos dias para el grafico
+
+@app.route("/api/appcr/puerto/history", methods=["GET"])
+def get_puerto_history():
+    """
+    Últimos 10 días de APPCR Puerto CR, agrupados por variable.
+    Formato: { "<variable>": { "unit": "<simbolo>", "data": [ {timestamp, value}, ... ] }, ... }
+    """
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Internal Server Error - Database connection failed"}), 500
+
+    try:
+        cur = conn.cursor()
+
+        diez_dias_atras = datetime.utcnow() - timedelta(days=10)
+
+        # Opción A (robusta): filtrar por nombre de plataforma
+        cur.execute("""
+            SELECT 
+                v.name        AS variable_name,
+                m."timestamp" AS ts,
+                m.value       AS val,
+                u.symbol      AS unit
+            FROM oogsj_data.measurement m
+            JOIN oogsj_data.sensor   s ON s.id = m.sensor_id
+            JOIN oogsj_data.platform p ON p.id = s.platform_id
+            JOIN oogsj_data.variable v ON v.id = s.variable_id
+            JOIN oogsj_data.unit     u ON u.id = s.unit_id
+            WHERE p.name = %s
+              AND m."timestamp" >= %s
+            ORDER BY v.name, m."timestamp";
+        """, ('APPCR Puerto CR', diez_dias_atras))
+
+        # ---- Opción B (si preferís por patrón en nombre de sensor, Puerto CR suele ser 160710) ----
+        # cur.execute("""
+        #     SELECT 
+        #         v.name        AS variable_name,
+        #         m."timestamp" AS ts,
+        #         m.value       AS val,
+        #         u.symbol      AS unit
+        #     FROM oogsj_data.measurement m
+        #     JOIN oogsj_data.sensor   s ON s.id = m.sensor_id
+        #     JOIN oogsj_data.variable v ON v.id = s.variable_id
+        #     JOIN oogsj_data.unit     u ON u.id = s.unit_id
+        #     WHERE s.name LIKE '%%160710%%'
+        #       AND m."timestamp" >= %s
+        #     ORDER BY v.name, m."timestamp";
+        # """, (diez_dias_atras,))
+
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        data = {}
+        for variable_name, ts, val, unit in rows:
+            bucket = data.setdefault(variable_name, {"unit": unit, "data": []})
+            bucket["data"].append({
+                "timestamp": ts.isoformat() if ts else None,
+                "value": float(val) if val is not None else None
+            })
+
+        return jsonify(data)
+
+    except Exception as e:
+        print(f"❌ ERROR en /api/appcr/puerto/history: {e}")
+        return jsonify({"error": "Internal Server Error"}), 500
 
 
 #--------------------------endpoint estacion meteorologica caleta cordova ultimos datos ----------------------------------------------------
