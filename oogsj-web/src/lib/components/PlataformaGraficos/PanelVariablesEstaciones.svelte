@@ -6,65 +6,25 @@
 
     let loading = true;
     let ultimaFecha = '';
-    let selectedCategoria = 'temperatura';
-    let variablesPorCategoria = {
-        temperatura: [],
-        lluvia: [],
-        viento: [],
-        radiacion: [],
-        presion: [],
-        otros: []
+    let variables = [];
+    
+    // Diccionario de íconos basado en las variables de tu JSON
+    const iconosVariables = {
+        "Humedad Exterior": '💧',
+        "Presión Barométrica": '📈',
+        "Temperatura Exterior": '🌡️',
+        "Velocidad del Viento": '💨'
     };
-
-    const categorias = [
-        { clave: 'temperatura', label: '🌡️ Temperatura' },
-        { clave: 'lluvia', label: '🌧️ Lluvia' },
-        { clave: 'viento', label: '💨 Viento' },
-        { clave: 'radiacion', label: '☀️ Radiación' },
-        { clave: 'presion', label: '📈 Presión' },
-        { clave: 'otros', label: '🧪 Otros' }
-    ];
-
-    const mapaCategorias = {
-        temperatura: ["temp_out", "temperatura"],
-        lluvia: ["rain", "rainfall"],
-        viento: ["wind", "vel", "velocidad"],
-        radiacion: ["solar", "uv", "radiacion"],
-        presion: ["bar", "press", "presion"],
-        otros: ["humedad", "hum_out", "emc", "cloud", "deg_days"]
-    };
-
-    function clasificarVariable(nombre, unidad, valor) {
-        const lower = nombre.toLowerCase();
-        for (const [categoria, keywords] of Object.entries(mapaCategorias)) {
-            if (keywords.some(keyword => lower.includes(keyword))) {
-                // Redondea el valor a 2 decimales
-                const valorRedondeado = valor !== null ? parseFloat(valor.toFixed(2)) : null;
-                variablesPorCategoria[categoria].push({ nombre, unidad, valor: valorRedondeado, icono: getEmoji(nombre) });
-                return;
-            }
-        }
-        const valorRedondeado = valor !== null ? parseFloat(valor.toFixed(2)) : null;
-        variablesPorCategoria.otros.push({ nombre, unidad, valor: valorRedondeado, icono: getEmoji(nombre) });
-    }
-
-    function getEmoji(nombre) {
-        const n = nombre.toLowerCase();
-        if (n.includes('temp') || n.includes('temperatura')) return '🌡️';
-        if (n.includes('humedad') || n.includes('hum')) return '💧';
-        if (n.includes('wind') || n.includes('viento') || n.includes('vel')) return '💨';
-        if (n.includes('rain') || n.includes('lluvia')) return '🌧️';
-        if (n.includes('uv') || n.includes('radiacion')) return '🌞';
-        if (n.includes('solar')) return '🔆';
-        if (n.includes('bar') || n.includes('press') || n.includes('presion')) return '📈';
-        if (n.includes('emc')) return '🌾';
-        if (n.includes('cloud')) return '☁️';
-        return '❓';
-    }
-
+    
+    // Función para formatear la fecha a dd/mm/yyyy hh:mm y ajustar la zona horaria
     function formatearFecha(fechaStr) {
-        const fecha = new Date(fechaStr);
-        return fecha.toLocaleString();
+        const fecha = new Date(fechaStr + 'Z'); // Asume que la fecha del JSON es UTC
+        const dia = String(fecha.getDate()).padStart(2, '0');
+        const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+        const anio = fecha.getFullYear();
+        const horas = String(fecha.getHours()).padStart(2, '0');
+        const minutos = String(fecha.getMinutes()).padStart(2, '0');
+        return `${dia}/${mes}/${anio} ${horas}:${minutos}`;
     }
 
     onMount(async () => {
@@ -73,27 +33,15 @@
             const data = await res.json();
             
             if (data.length > 0) {
-                // Agrupamos los datos por la propiedad 'variable'
-                const datosAgrupados = {};
-                data.forEach(item => {
-                    const variableNombre = item.variable;
-                    // Solo toma la última medición para el panel de variables
-                    if (!datosAgrupados[variableNombre]) {
-                        datosAgrupados[variableNombre] = item;
-                    }
-                });
-                
-                ultimaFecha = formatearFecha(Object.values(datosAgrupados)[0].timestamp);
-                
-                // Limpiamos las variablesPorCategoria para evitar datos duplicados
-                for (const key in variablesPorCategoria) {
-                    variablesPorCategoria[key] = [];
-                }
+                ultimaFecha = formatearFecha(data[0].timestamp);
 
-                // Clasificamos las variables agrupadas
-                Object.values(datosAgrupados).forEach(item => {
-                    clasificarVariable(item.variable, item.unit, item.value);
-                });
+                variables = data.map(item => ({
+                    nombre: item.variable,
+                    unidad: item.unit ?? '',
+                    // Redondea el valor a 2 decimales
+                    valor: item.value !== null ? parseFloat(item.value.toFixed(2)) : null,
+                    icono: iconosVariables[item.variable] ?? '❓'
+                }));
             }
         } catch (err) {
             console.error("Error al obtener datos:", err);
@@ -105,32 +53,25 @@
 
 <div class="contenedor-principal">
     <h2 class="nombre">{titulo}</h2>
-
+    
     {#if loading}
-        <div class="estado"><em>Cargando datos...</em></div>
-    {:else}
+        <div class="estado"><em>Cargando datos...</em> <span class="spinner"></span></div>
+    {:else if ultimaFecha}
         <p class="fecha">📅 Última medición: <strong>{ultimaFecha}</strong></p>
-
-        <div class="tabs">
-            {#each categorias as c}
-                <button on:click={() => selectedCategoria = c.clave}
-                        class:selected={selectedCategoria === c.clave}>
-                    {c.label}
-                </button>
-            {/each}
-        </div>
-
-        <div class="cards-container">
-            {#each variablesPorCategoria[selectedCategoria] as variable}
-                <div class="variable-card tooltip-wrapper">
-                    <span class="unidad-card">{variable.unidad}</span>
-                    <span class="icon">{variable.icono}</span>
-                    <span class="tooltip">{variable.nombre}</span>
-                    <span class="valor">{variable.valor ?? '–'}</span>
-                </div>
-            {/each}
-        </div>
+    {:else}
+        <p class="estado"><em>No hay datos disponibles actualmente.</em></p>
     {/if}
+
+    <div class="cards-container">
+        {#each variables as variable}
+            <div class="variable-card tooltip-wrapper">
+                <span class="unidad">{variable.unidad}</span>
+                <span class="icon">{variable.icono}</span>
+                <span class="tooltip">{variable.nombre}</span>
+                <span class="valor">{variable.valor ?? '–'}</span>
+            </div>
+        {/each}
+    </div>
 </div>
 
 <style>
@@ -155,34 +96,21 @@
         margin: 0.3rem 0 0.8rem;
     }
 
-    .tabs {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 0.5rem;
-        margin-bottom: 1rem;
+    .spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #555;
+        border-radius: 50%;
+        width: 14px;
+        height: 14px;
+        display: inline-block;
+        animation: spin 1s linear infinite;
+        margin-left: 0.5rem;
+        vertical-align: middle;
     }
-
-    .tabs button {
-        padding: 0.4rem 0.8rem;
-        border: none;
-        border-radius: 0.5rem;
-        background: #eee;
-        cursor: pointer;
-        transition: none; /* Elimina la transición para un comportamiento estático */
-    }
-
-    .tabs button.selected {
-        background: #007BFF;
-        color: white;
-    }
-
-    .tabs button:hover {
-        background: #e0e0e0;
-    }
-
-    .tabs button.selected:hover {
-        background: #0056b3;
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
     }
 
     .cards-container {
@@ -205,14 +133,11 @@
         align-items: center;
         gap: 5px;
         position: relative;
-        transition: none; /* Elimina la transición para un comportamiento estático */
-        cursor: default;
     }
 
-    .unidad-card {
+    .unidad {
         font-size: 0.9rem;
         color: #666;
-        order: -1; /* Mueve la unidad a la parte superior */
     }
 
     .icon {

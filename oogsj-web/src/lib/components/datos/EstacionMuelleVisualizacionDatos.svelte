@@ -7,16 +7,14 @@
         "Humedad Exterior": "Porcentaje de humedad relativa en el aire.",
         "Presión Barométrica": "Presión atmosférica, útil para pronósticos del tiempo.",
         "Temperatura Exterior": "Temperatura del aire exterior.",
-        "Velocidad del Viento": "Velocidad del aire en la estación.",
-        "Dirección del Viento": "Ángulo desde donde proviene el viento. Medido en grados."
+        "Velocidad del Viento": "Velocidad del aire en la estación."
     };
 
     const muelleVariables = {
         "Humedad Exterior": "humedadExteriorChart",
         "Presión Barométrica": "presionBarometricaChart",
         "Temperatura Exterior": "temperaturaExteriorChart",
-        "Velocidad del Viento": "velocidadVientoChart",
-        "Dirección del Viento": "direccionVientoChart"
+        "Velocidad del Viento": "velocidadVientoChart"
     };
 
     let datos = {};
