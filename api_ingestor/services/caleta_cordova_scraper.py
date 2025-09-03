@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import logging
 import time
 import requests
-
+#esteee es el malooo deberia borralo pero no se usa, es un ejemplo de como no hacer un scraper
 # --- Logging básico (archivo y consola) ---
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
