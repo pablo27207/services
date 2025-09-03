@@ -1,8 +1,9 @@
 <script>
     import PanelVariables from '../PlataformaGraficos/PanelVariables.svelte';
     import { onMount, onDestroy } from 'svelte';
-    import BoyaVisualizacionDatos from '../datos/BoyaVisualizacionDatos.svelte'; // ⚠️ no se usa aún
     import PanelVariablesEstaciones from './PanelVariablesEstaciones.svelte';
+    import BoyaVisualizacionDatos from '../datos/BoyaVisualizacionDatos.svelte'; // para futuro
+    import EstacionPuertoVisualizacionDatos from '../datos/EstacionPuertoVisualizacionDatos.svelte';
   
     const Estacion = {
       nombre: "APPCR Puerto CR",
@@ -12,52 +13,13 @@
     };
   </script>
   
-  <!--Cambiar el endpoit por el de produccion -->
   <PanelVariablesEstaciones
-    endpoint="/api/weatherstation/puerto"
+    endpoint="/api/appcr/puerto"
     titulo={Estacion.nombre}
-    iconosVariables={{
-      "Sensor Virtual - abs_press - 160710": "🌡️",
-      "Sensor Virtual - bar - 160710": "📏",
-      "Sensor Virtual - bar_alt - 160710": "📏",
-      "Sensor Virtual - bar_noaa - 160710": "📏",
-      "Sensor Virtual - deg_days_cool - 160710": "❄️",
-      "Sensor Virtual - deg_days_heat - 160710": "🔥",
-      "Sensor Virtual - dew_point_in - 160710": "💧🏠",
-      "Sensor Virtual - dew_point_out - 160710": "💧🌤️",
-      "Sensor Virtual - emc - 160710": "🌾",
-      "Sensor Virtual - et - 160710": "🌫️",
-      "Sensor Virtual - heat_index_in - 160710": "🌡️🏠",
-      "Sensor Virtual - heat_index_out - 160710": "🌡️🌤️",
-      "Sensor Virtual - hum_in - 160710": "💦🏠",
-      "Sensor Virtual - hum_out - 160710": "💦🌤️",
-      "Sensor Virtual - rain_rate_hi_clicks - 160710": "🌧️📈",
-      "Sensor Virtual - rain_rate_hi_in - 160710": "🌧️📈",
-      "Sensor Virtual - rain_rate_hi_mm - 160710": "🌧️📈",
-      "Sensor Virtual - rainfall_clicks - 160710": "🌧️",
-      "Sensor Virtual - rainfall_in - 160710": "🌧️",
-      "Sensor Virtual - rainfall_mm - 160710": "🌧️",
-      "Sensor Virtual - temp_extra_1 - 160710": "🌡️🌍",
-      "Sensor Virtual - temp_in - 160710": "🌡️🏠",
-      "Sensor Virtual - temp_out - 160710": "🌡️🌤️",
-      "Sensor Virtual - temp_out_hi - 160710": "🌞📈",
-      "Sensor Virtual - temp_out_lo - 160710": "❄️📉",
-      "Sensor Virtual - thw_index - 160710": "🌪️",
-      "Sensor Virtual - wet_bulb - 160710": "💧🌡️",
-      "Sensor Virtual - wind_chill - 160710": "💨❄️",
-      "Sensor Virtual - wind_dir_of_hi - 160710": "🧭📈",
-      "Sensor Virtual - wind_dir_of_prevail - 160710": "🧭📉",
-      "Sensor Virtual - wind_num_samples - 160710": "📊",
-      "Sensor Virtual - wind_run - 160710": "🏃💨",
-      "Sensor Virtual - wind_speed - 160710": "💨",
-      "Sensor Virtual - wind_speed_avg - 160710": "💨📊",
-      "Sensor Virtual - wind_speed_hi - 160710": "💨📈"
-    }}
-  />
-  
-  <!-- Componente de gráficos para el futuro -->
+/>
   <!--<BoyaVisualizacionDatos />-->
-  
+  <!--Aca agrega los graficos debo agrego los graficos posibles para esto-->
+  <EstacionPuertoVisualizacionDatos></EstacionPuertoVisualizacionDatos>
   <style>
     .cards-container {
       display: flex;
@@ -79,6 +41,10 @@
       flex-direction: column;
       align-items: center;
       gap: 5px;
+    }
+  
+    .variable-card .icon {
+      font-size: 24px;
     }
   
     .grid-container {

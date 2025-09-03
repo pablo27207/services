@@ -114,11 +114,11 @@ function clickOutside(node) {
     } else if (plataforma.nombre.toLowerCase().includes("mareógrafo")) {
       emoji = "🟢";
     } else if (plataforma.nombre.toLowerCase().includes("Estacion Meteorologica")) {
-      emoji = "🟠"; 
+      emoji = "🟢"; 
     } else if (plataforma.nombre.toLowerCase().includes("boya")) {
       emoji = "🟢";
     } else if (plataforma.nombre.toLowerCase().includes("Estacion Meteorologica caleta") || plataforma.nombre.toLowerCase().includes("puerto")) {
-      emoji = "🟠";
+      emoji = "🟢";
     }
 
     const customIcon = L.divIcon({
