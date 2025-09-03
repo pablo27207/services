@@ -21,7 +21,7 @@
     let isLoading = true;
     let error = null;
 
-    const endpointUrl = 'http://localhost/api/appcr/puerto/history';
+    const endpointUrl = '/api/appcr/puerto/history';
 
     onMount(async () => {
         try {
