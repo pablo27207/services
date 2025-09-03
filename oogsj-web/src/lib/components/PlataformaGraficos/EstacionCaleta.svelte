@@ -3,6 +3,7 @@
     import { onMount, onDestroy } from 'svelte';
     import PanelVariablesEstaciones from './PanelVariablesEstaciones.svelte';
     import BoyaVisualizacionDatos from '../datos/BoyaVisualizacionDatos.svelte'; // para futuro
+    import EstacionMuelleVisualizacionDatos from '../datos/EstacionMuelleVisualizacionDatos.svelte';
   
     const Estacion = {
       nombre: "APPCR Muelle CC",
@@ -12,51 +13,19 @@
     };
   </script>
   
-  <PanelVariablesEstaciones
+  <!--<PanelVariablesEstaciones
     endpoint="/api/weatherstation/muelle"
     titulo={Estacion.nombre}
     iconosVariables={{
-      "Sensor Virtual - abs_press - 191512": "🌡️",
-      "Sensor Virtual - bar - 191512": "📏",
-      "Sensor Virtual - bar_alt - 191512": "📏",
-      "Sensor Virtual - bar_noaa - 191512": "📏",
-      "Sensor Virtual - deg_days_cool - 191512": "❄️",
-      "Sensor Virtual - deg_days_heat - 191512": "🔥",
-      "Sensor Virtual - dew_point_out - 191512": "💧🌤️",
-      "Sensor Virtual - et - 191512": "🌫️",
-      "Sensor Virtual - heat_index_out - 191512": "🌡️🌤️",
-      "Sensor Virtual - hum_out - 191512": "💦🌤️",
-      "Sensor Virtual - night_cloud_cover - 191512": "☁️🌙",
-      "Sensor Virtual - rain_rate_hi_clicks - 191512": "🌧️📈",
-      "Sensor Virtual - rain_rate_hi_in - 191512": "🌧️📈",
-      "Sensor Virtual - rain_rate_hi_mm - 191512": "🌧️📈",
-      "Sensor Virtual - rainfall_clicks - 191512": "🌧️",
-      "Sensor Virtual - rainfall_in - 191512": "🌧️",
-      "Sensor Virtual - rainfall_mm - 191512": "🌧️",
-      "Sensor Virtual - solar_energy - 191512": "🔆⚡",
-      "Sensor Virtual - solar_rad_avg - 191512": "🔆📊",
-      "Sensor Virtual - solar_rad_hi - 191512": "🔆📈",
+      12": "🔆📈",
       "Sensor Virtual - temp_in - 191512": "🌡️🏠",
       "Sensor Virtual - temp_out - 191512": "🌡️🌤️",
-      "Sensor Virtual - temp_out_hi - 191512": "🌞📈",
-      "Sensor Virtual - temp_out_lo - 191512": "❄️📉",
-      "Sensor Virtual - thsw_index - 191512": "🌡️🌬️☀️",
-      "Sensor Virtual - thw_index - 191512": "🌪️",
-      "Sensor Virtual - uv_dose - 191512": "🌞💥",
-      "Sensor Virtual - uv_index_avg - 191512": "🌞📊",
-      "Sensor Virtual - uv_index_hi - 191512": "🌞📈",
-      "Sensor Virtual - wet_bulb - 191512": "💧🌡️",
-      "Sensor Virtual - wind_chill - 191512": "💨❄️",
-      "Sensor Virtual - wind_dir_of_hi - 191512": "🧭📈",
-      "Sensor Virtual - wind_dir_of_prevail - 191512": "🧭📉",
-      "Sensor Virtual - wind_num_samples - 191512": "📊",
-      "Sensor Virtual - wind_run - 191512": "🏃💨",
-      "Sensor Virtual - wind_speed_avg - 191512": "💨📊",
-      "Sensor Virtual - wind_speed_hi - 191512": "💨📈"
+    
     }}
-  />
+  />-->
   <!--<BoyaVisualizacionDatos />-->
-  
+  <!--Aca agrega los graficos debo agrego los graficos posibles para esto-->
+  <EstacionMuelleVisualizacionDatos></EstacionMuelleVisualizacionDatos>
   <style>
     .cards-container {
       display: flex;

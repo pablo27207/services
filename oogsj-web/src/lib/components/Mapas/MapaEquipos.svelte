@@ -35,8 +35,8 @@
     { nombre: "temp_out", tipo: "Temperatura Exterior", imagen: "/imagenes/Sensores/temperatura.png", descripcion: "Mide la temperatura del aire exterior." },
     { nombre: "hum_out", tipo: "Humedad Exterior", imagen: "/imagenes/Sensores/humedad.png", descripcion: "Mide la humedad relativa exterior." },
     { nombre: "wind_speed", tipo: "Velocidad del Viento", imagen: "/imagenes/Sensores/anemometro-foto.jpg", descripcion: "Mide la velocidad instantánea del viento." },
-    { nombre: "bar", tipo: "Presión Barométrica", imagen: "/imagenes/Sensores/presion.png", descripcion: "Mide la presión atmosférica en inHg." },
-    { nombre: "solar_rad_hi", tipo: "Radiación Solar Máxima", imagen: "/imagenes/Sensores/radiacion_solar.png", descripcion: "Máximo valor registrado de radiación solar." }
+    { nombre: "bar", tipo: "Presión Barométrica", imagen: "/imagenes/Sensores/presion.png", descripcion: "Mide la presión atmosférica en inHg." }
+
   ]
 },
 {
@@ -44,14 +44,15 @@
   lat: -45.749312,
   lon: -67.368301,
   info: "Estación meteorológica instalada en el muelle de Comodoro Rivadavia. Registra parámetros atmosféricos como presión, humedad, temperatura, viento y radiación.",
-  imagen: "/imagenes/Plataformas/Puerto-de-Comodoro-Rivadavia.jpeg",
+  imagen: "/imagenes/Plataformas/PuertoCaleta.jpg",
+  
   sensores: [
     { nombre: "abs_press", tipo: "Presión Absoluta", imagen: "/imagenes/Sensores/presion.png", descripcion: "Mide la presión atmosférica absoluta en inHg." },
     { nombre: "hum_out", tipo: "Humedad", imagen: "/imagenes/Sensores/humedad.png", descripcion: "Mide la humedad relativa exterior en porcentaje." },
     { nombre: "temp_out", tipo: "Temperatura", imagen: "/imagenes/Sensores/temperatura.png", descripcion: "Mide la temperatura exterior en grados Fahrenheit." },
-    { nombre: "solar_rad_avg", tipo: "Radiación Solar", imagen: "/imagenes/Sensores/radiacion_solar.png", descripcion: "Promedio de radiación solar medida en µmol/m²/s." },
+    
     { nombre: "wind_speed_avg", tipo: "Velocidad del viento", imagen: "/imagenes/Sensores/anemometro-foto.jpg", descripcion: "Promedio de la velocidad del viento en mph." },
-    { nombre: "uv_index_avg", tipo: "Índice UV", imagen: "/imagenes/Sensores/uv_index.png", descripcion: "Promedio del índice UV." }
+   
   ]
 },
     
@@ -112,7 +113,7 @@
         } else if (ubicacion.nombre.includes("Mareografo")) {
           emoji = "🟢";
         } else if (ubicacion.nombre.includes("Estacion Meteorologica")) {
-          emoji = "🟠";
+          emoji = "🟢";
         } else if (ubicacion.nombre.includes("Boya")) {
           emoji = "🟢";
         }
