@@ -13,16 +13,10 @@
     };
   </script>
   
-  <!--<PanelVariablesEstaciones
-    endpoint="/api/weatherstation/muelle"
+  <PanelVariablesEstaciones
+    endpoint="/api/appcr/muelle_cc"
     titulo={Estacion.nombre}
-    iconosVariables={{
-      12": "🔆📈",
-      "Sensor Virtual - temp_in - 191512": "🌡️🏠",
-      "Sensor Virtual - temp_out - 191512": "🌡️🌤️",
-    
-    }}
-  />-->
+/>
   <!--<BoyaVisualizacionDatos />-->
   <!--Aca agrega los graficos debo agrego los graficos posibles para esto-->
   <EstacionMuelleVisualizacionDatos></EstacionMuelleVisualizacionDatos>

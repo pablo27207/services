@@ -34,8 +34,6 @@
             const jsonData = await res.json();
             console.log("📦 Datos del muelle recibidos:", jsonData);
             
-            // Verificamos que los datos tengan el formato esperado (ej. que contengan la clave 'data')
-            // Aunque tu backend ya lo hace, es una buena práctica.
             let formattedData = {};
             for (const key in jsonData) {
                 if (jsonData[key].data) {
@@ -139,9 +137,9 @@
 
                 {#if datos[label] && datos[label].data.length > 0}
                     {#if label.includes("Dirección")}
-                        <GraficoPolar data={datos[label]} label={label} />
+                        <GraficoPolar data={datos[label].data} label={label} />
                     {:else}
-                        <GraficoLineal data={datos[label]} label={label} color="steelblue" />
+                        <GraficoLineal data={datos[label].data} label={label} color="steelblue" />
                     {/if}
                 {:else}
                     <p>No hay datos disponibles para esta variable.</p>
