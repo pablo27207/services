@@ -62,6 +62,15 @@
 
         const filteredData = data.filter(d => !isNaN(d.value) && d.timestamp);
         
+        if (filteredData.length === 0) {
+             svg.append("text")
+                .attr("x", width / 2)
+                .attr("y", height / 2)
+                .attr("text-anchor", "middle")
+                .text("No hay datos válidos para mostrar");
+            return;
+        }
+
         filteredData.forEach(d => {
             if (typeof d.timestamp === 'string') {
                 d.timestamp = new Date(d.timestamp);
@@ -73,9 +82,24 @@
             .domain(d3.extent(filteredData, d => d.timestamp))
             .range([margin.left, width - margin.right]);
 
+        // --- SECCIÓN MODIFICADA ---
+        const yMin = d3.min(filteredData, d => d.value);
+        const yMax = d3.max(filteredData, d => d.value);
+
+        if (yMin === undefined || yMax === undefined) return;
+
+        let buffer;
+        if (yMin === yMax) {
+            buffer = yMax * 0.05;
+        } else {
+            buffer = (yMax - yMin) * 0.1;
+        }
+        if (buffer === 0) buffer = 1;
+
         const y = d3.scaleLinear()
-            .domain([0, d3.max(filteredData, d => d.value) || 1])
+            .domain([yMin - buffer, yMax + buffer])
             .range([height - margin.bottom, margin.top]);
+        // --- FIN DE LA SECCIÓN MODIFICADA ---
 
         const format = localeEs.format("%a %d");
 
