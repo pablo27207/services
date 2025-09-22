@@ -1,20 +1,17 @@
-
-
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  plugins: [sveltekit()],
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://web_app:5001', // web_app es el nombre del servicio Docker
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/api'),
-      }
+    plugins: [sveltekit()],
+    server: {
+        proxy: {
+            '/api': {
+                target: 'http://api_ingestor:5000', // <-- Aquí el cambio clave
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/api/, '/api'),
+            }
+        }
     }
-  }
-  
 });
 
 //import { sveltekit } from '@sveltejs/kit/vite';

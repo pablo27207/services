@@ -8,6 +8,15 @@
       url: "https://conocimiento.gob.ar/index.php/noticias/un-buque-cientifico-bulgaro-visito-el-puerto-de-comodoro-en-su-viaje-a-la-antartida-2"
     },
     {
+      titulo: "Comodoro Conocimiento impulsa la certificación profesional en los puertos",
+      fecha: "Enero 26, 2025",
+      resumen: "Agencia Comodoro Conocimiento, CGT y SUPA impulsan capacitaciones portuarias con certificación, ampliadas a Madryn, Rawson y Camarones, para fortalecer empleo y competitividad regional.",
+      fuente: "Agencia Comodoro Conocimiento",
+      url: "https://conocimiento.gob.ar/index.php/noticias/comodoro-conocimiento-impulsa-la-certificacion-profesional-en-los-puertos"
+    },
+
+
+    {
       titulo: "Fue instalada la boya oceanográfica en las aguas del Golfo San Jorge",
       fecha: "Enero 21, 2025",
       resumen: "Se puso en funcionamiento la boya oceanográfica Comodoro II, ubicada a 4 km de la costa en el Golfo San Jorge. El operativo de traslado e instalación fue realizado por el Municipio, Comodoro Conocimiento, el Puerto local, la Universidad y el CONICET. Esta boya transmitirá datos por al menos cinco meses y marca un hito en el desarrollo del Observatorio Oceanográfico. Permitirá obtener información clave para la navegación, obras costeras y políticas de sustentabilidad relacionadas con pesca y energía mareomotriz. El operativo incluyó buzos, embarcaciones de apoyo y un anclaje de 11 toneladas.",
