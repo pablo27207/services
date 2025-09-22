@@ -124,10 +124,10 @@ services:
       - api_ingestor
       - frontend_oogsj
     volumes:
-      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
       - ./oogsj-web/build:/usr/share/nginx/html:ro
-      #- ./certbot/www:/var/www/certbot
-      #- ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
     ports:
       - "80:80"
       - "443:443"
