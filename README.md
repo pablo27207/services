@@ -37,7 +37,7 @@ The architecture is containerized using Docker, with Nginx as a reverse proxy an
 ------------------------------------------------------------------------------------------------------
 ## 🔁 Flujo de trabajo de ramas
 
-- `Developer-Franco`: desarrollo local, sin Certbot ni SSL.
+- `Developer-`: desarrollo local, sin Certbot ni SSL.
 - `main`: staging, se limpia y testea antes de pasar a producción.
 - `master-produccion`: despliegue final, con Certbot, HTTPS y dominios oficiales.
 
