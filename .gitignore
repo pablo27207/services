@@ -77,3 +77,5 @@ letsencrypt/
 # ❌ Otros
 sistema-oogsj/
 oogsj-web/svelte.config.jsx
+
+.env.science_db

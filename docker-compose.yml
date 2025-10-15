@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # 1. Base de datos original
   db:
     image: postgres:15
     container_name: postgres_db
@@ -19,6 +20,27 @@ services:
     networks:
       - oogsj_network
 
+  # 2. NUEVA BASE DE DATOS CIENTÍFICA (Taxonomía, Documentos, Usuarios)
+  taxonomica_db:
+    image: postgres:15
+    container_name: postgres_taxonomica_db
+    restart: always
+    env_file:
+      - .env.science_db
+    volumes:
+      - taxonomica_db_data:/var/lib/postgresql/data
+      - ./db_init/scientific_db.sql:/docker-entrypoint-initdb.d/scientific_db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 10
+    networks:
+      - oogsj_network
+
+
+  # 3. Caché
   cache:
     image: redis:alpine
     container_name: redis_cache
@@ -31,6 +53,7 @@ services:
     networks:
       - oogsj_network
 
+  # 4. API Ingestor (No necesita las credenciales de la nueva DB, se mantiene)
   api_ingestor:
     build:
       context: ./api_ingestor
@@ -50,6 +73,7 @@ services:
     networks:
       - oogsj_network
 
+  # 5. Celery Worker (No necesita las credenciales de la nueva DB, se mantiene)
   celery_worker:
     build:
       context: ./api_ingestor
@@ -72,6 +96,7 @@ services:
     networks:
       - oogsj_network
 
+  # 6. Celery Beat (No necesita las credenciales de la nueva DB, se mantiene)
   celery_beat:
     build:
       context: ./api_ingestor
@@ -92,20 +117,27 @@ services:
     networks:
       - oogsj_network
 
+  # 7. Web App (Tu backend principal - AÑADIDA DEPENDENCIA Y CREDENCIALES)
   web_app:
     build: ./web_app
     container_name: web_app
     depends_on:
-      - db
-      - api_ingestor
+      db:
+        condition: service_healthy
+      taxonomica_db: # NUEVA DEPENDENCIA
+        condition: service_healthy
+      api_ingestor:
+        condition: service_started
     env_file:
       - .env
+      - .env.science_db # Carga las credenciales de la nueva DB
     restart: always
     volumes:
       - ./web_app:/app
     networks:
       - oogsj_network
 
+  # 8. Frontend
   frontend_oogsj:
     build:
       context: ./oogsj-web
@@ -116,6 +148,7 @@ services:
     networks:
       - oogsj_network
 
+  # 9. Nginx Proxy
   nginx_proxy:
     image: nginx:latest
     container_name: nginx_proxy
@@ -135,6 +168,7 @@ services:
     networks:
       - oogsj_network
 
+  # 10. Certbot
   certbot:
     image: certbot/certbot
     container_name: certbot
@@ -147,8 +181,8 @@ services:
 
 volumes:
   db_data:
+  taxonomica_db_data: # NUEVO Volumen persistente
 
 networks:
   oogsj_network:
     name: oogsj_network
-
