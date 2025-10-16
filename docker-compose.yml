@@ -1,7 +1,6 @@
-version: '3.8'
+# (opcional) remove la línea version: '3.8' porque Compose v2 la ignora
 
 services:
-  # 1. Base de datos original
   db:
     image: postgres:15
     container_name: postgres_db
@@ -17,10 +16,8 @@ services:
       timeout: 5s
       start_period: 60s
       retries: 10
-    networks:
-      - oogsj_network
+    networks: [oogsj_network]
 
-  # 2. NUEVA BASE DE DATOS CIENTÍFICA (Taxonomía, Documentos, Usuarios)
   taxonomica_db:
     image: postgres:15
     container_name: postgres_taxonomica_db
@@ -31,16 +28,14 @@ services:
       - taxonomica_db_data:/var/lib/postgresql/data
       - ./db_init/scientific_db.sql:/docker-entrypoint-initdb.d/scientific_db.sql
     healthcheck:
+      # dentro del contenedor, localhost está bien; también podrías omitir -h
       test: ["CMD-SHELL", "pg_isready -h localhost -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       start_period: 60s
       retries: 10
-    networks:
-      - oogsj_network
+    networks: [oogsj_network]
 
-
-  # 3. Caché
   cache:
     image: redis:alpine
     container_name: redis_cache
@@ -50,10 +45,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - oogsj_network
+    networks: [oogsj_network]
 
-  # 4. API Ingestor (No necesita las credenciales de la nueva DB, se mantiene)
   api_ingestor:
     build:
       context: ./api_ingestor
@@ -70,19 +63,14 @@ services:
       - ./api_ingestor:/app
       - ./logs:/app/logs
     restart: unless-stopped
-    networks:
-      - oogsj_network
+    networks: [oogsj_network]
 
-  # 5. Celery Worker (No necesita las credenciales de la nueva DB, se mantiene)
   celery_worker:
     build:
       context: ./api_ingestor
       dockerfile: Dockerfile
     container_name: celery_worker
-    depends_on:
-      - db
-      - cache
-      - api_ingestor
+    depends_on: [db, cache, api_ingestor]
     env_file:
       - .env
     environment:
@@ -93,17 +81,14 @@ services:
       - ./logs:/app/logs
     restart: always
     command: celery -A celery_tasks worker --loglevel=info
-    networks:
-      - oogsj_network
+    networks: [oogsj_network]
 
-  # 6. Celery Beat (No necesita las credenciales de la nueva DB, se mantiene)
   celery_beat:
     build:
       context: ./api_ingestor
       dockerfile: Dockerfile
     container_name: celery_beat
-    depends_on:
-      - celery_worker
+    depends_on: [celery_worker]
     env_file:
       - .env
     environment:
@@ -114,74 +99,55 @@ services:
       - ./logs:/app/logs
     restart: always
     command: celery -A celery_tasks beat --loglevel=info
-    networks:
-      - oogsj_network
+    networks: [oogsj_network]
 
-  # 7. Web App (Tu backend principal - AÑADIDA DEPENDENCIA Y CREDENCIALES)
   web_app:
     build: ./web_app
     container_name: web_app
     depends_on:
       db:
         condition: service_healthy
-      taxonomica_db: # NUEVA DEPENDENCIA
+      taxonomica_db:
         condition: service_healthy
       api_ingestor:
         condition: service_started
     env_file:
       - .env
-      - .env.science_db # Carga las credenciales de la nueva DB
+      - .env.science_db
     restart: always
     volumes:
       - ./web_app:/app
-    networks:
-      - oogsj_network
+    networks: [oogsj_network]
 
-  # 8. Frontend
   frontend_oogsj:
     build:
       context: ./oogsj-web
     container_name: frontend_oogsj
     restart: always
-    depends_on:
-      - web_app
-    networks:
-      - oogsj_network
+    depends_on: [web_app]
+    networks: [oogsj_network]
 
-  # 9. Nginx Proxy
   nginx_proxy:
-    image: nginx:latest
+    image: nginx:1.25-alpine
     container_name: nginx_proxy
-    depends_on:
-      - web_app
-      - api_ingestor
-      - frontend_oogsj
-    volumes:
-      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
-      - ./oogsj-web/build:/usr/share/nginx/html:ro
-      - ./certbot/www:/var/www/certbot
-      - ./certbot/conf:/etc/letsencrypt
+    depends_on: [web_app, api_ingestor, frontend_oogsj]
     ports:
-      - "80:80"
-      - "443:443"
-    restart: always
-    networks:
-      - oogsj_network
-
-  # 10. Certbot
-  certbot:
-    image: certbot/certbot
-    container_name: certbot
+      - "80:80"        # SOLO HTTP en DEV
     volumes:
-      - ./certbot/www:/var/www/certbot
-      - ./certbot/conf:/etc/letsencrypt
-    entrypoint: /bin/sh -c 'trap exit TERM; while :; do sleep 12h & wait $${!}; certbot renew;'
-    networks:
-      - oogsj_network
+      # En DEV montamos el conf DEV como default.conf
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+      # Si tu frontend genera build estático y querés servir directo:
+      # - ./oogsj-web/build:/usr/share/nginx/html:ro
+    restart: always
+    networks: [oogsj_network]
+
+# ⛔ En DEV NO corremos Certbot ni abrimos 443, así evitamos loops por certificados
+# certbot:
+#   ...
 
 volumes:
   db_data:
-  taxonomica_db_data: # NUEVO Volumen persistente
+  taxonomica_db_data:
 
 networks:
   oogsj_network:

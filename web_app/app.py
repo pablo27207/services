@@ -10,6 +10,9 @@ import hashlib
 from flask_mail import Mail, Message
 from flask import Blueprint
 from datetime import datetime, timedelta
+from usuarios import usuarios_bp
+app.register_blueprint(usuarios_bp)
+
 
 
 app = Flask(__name__)
