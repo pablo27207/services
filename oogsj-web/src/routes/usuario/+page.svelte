@@ -1,12 +1,49 @@
-<!-- src/routes/auth/+page.svelte -->
-<section class="min-h-[60vh] flex items-center justify-center">
-  <div class="w-full max-w-sm p-6 rounded-2xl bg-base-100 shadow">
-    <h1 class="text-2xl font-semibold mb-4">Bienvenido</h1>
-    <p class="mb-6 opacity-80">Elegí cómo querés continuar:</p>
+<script>
+  import Login from '$lib/components/Usuarios/Login.svelte';
+  import Usuario from '$lib/components/Usuario.svelte';
+  import FormIntermedio from '$lib/components/Usuario/FormIntermedio.svelte';
 
-    <div class="grid gap-3">
-      <a href="/auth/login" class="btn btn-primary w-full">Iniciar sesión</a>
-      <a href="/auth/register" class="btn btn-outline w-full">Crear cuenta</a>
-    </div>
-  </div>
-</section>
+  // **Estado central de la navegación y datos**
+  // Posibles valores: 'login', 'form', 'dashboard'
+  let step = 'login'; 
+  let userData = {};
+
+  // 1. Maneja el éxito del Login
+  const handleLogin = (user) => {
+    userData = user;
+    step = 'form'; // Avanza al formulario intermedio
+    console.log("Login exitoso. Avanzando a Formulario Intermedio.");
+  };
+
+  // 2. Maneja el envío del Formulario Intermedio
+  const handleFormSubmit = (fullUser) => {
+    userData = fullUser;
+    step = 'dashboard'; // Avanza al dashboard final
+    console.log("Formulario completado. Avanzando a Dashboard.");
+  };
+
+  // 3. Maneja el Cierre de Sesión (vuelve al inicio)
+  const handleLogout = () => {
+    step = 'login';
+    userData = {};
+    console.log("Sesión cerrada. Volviendo a Login.");
+  };
+</script>
+
+<div>
+  {#if step === 'login'}
+    <Login onLoginSuccess={handleLogin} />
+
+  {:else if step === 'form'}
+    <FormIntermedio 
+      user={userData} 
+      onFormSubmit={handleFormSubmit}
+    />
+    
+  {:else if step === 'dashboard'}
+    <Usuario 
+      user={userData} 
+      onLogout={handleLogout} 
+    />
+  {/if}
+</div>

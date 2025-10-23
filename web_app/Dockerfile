@@ -1,16 +1,22 @@
-# Etapa 1: Construcción
+# Etapa 1: Construcción (Instalación de dependencias)
 FROM python:3.9-slim AS builder
-WORKDIR /app
+WORKDIR /install_deps
 
-COPY requirements.txt .  
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+# Copiamos solo el archivo de dependencias para aprovechar el cache de Docker
+COPY requirements.txt .  
+RUN pip install --no-cache-dir --prefix=/usr/local -r requirements.txt
 
-# Etapa 2: Imagen final
+# Etapa 2: Imagen final (Entorno de ejecución)
 FROM python:3.9-slim
 WORKDIR /app
 
-COPY --from=builder /install /usr/local  
-COPY . .  
+# Copiamos los paquetes instalados
+COPY --from=builder /usr/local /usr/local
 
+# Copiamos todo el código de la aplicación (incluyendo app.py, usuarios.py, etc.)
+# Nota: El contexto de construcción es ./web_app
+COPY . /app/  
+
+# Comando de inicio de Gunicorn.
+# app:app significa: busca el módulo 'app' (app.py) y usa la instancia 'app' (Flask app)
 CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers=2", "--access-logfile=-", "app:app"]
-

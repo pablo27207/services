@@ -10,8 +10,7 @@ import hashlib
 from flask_mail import Mail, Message
 from flask import Blueprint
 from datetime import datetime, timedelta
-from usuarios import usuarios_bp
-app.register_blueprint(usuarios_bp)
+
 
 
 
@@ -30,6 +29,9 @@ app.config['MAIL_DEFAULT_SENDER'] = 'gfranco323@gmail.com'
 
 mail = Mail(app)
 
+
+from usuarios import usuarios_bp
+app.register_blueprint(usuarios_bp)
 
 @app.route('/api/send-suggestion', methods=['POST'])
 def send_suggestion():
@@ -540,6 +542,15 @@ def mediciones_negativas():
         print(f"❌ ERROR en /api/mediciones_negativas: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
 
+
+@app.route("/healthz")
+def healthz():
+    return "ok", 200
+
+
+@app.route("/healthz")
+def healthz():
+    return "ok", 200
 
 
 
