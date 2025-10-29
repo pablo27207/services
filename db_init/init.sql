@@ -279,3 +279,6 @@ INSERT INTO oogsj_data.sensor (platform_id, name, variable_id, unit_id) VALUES
 (5,'dew_point_out - 191512', 35, 2),
 (5,'wet_bulb - 191512', 45, 2),
 (4,'temp_extra_1 - 160710', 54, 2);
+
+
+

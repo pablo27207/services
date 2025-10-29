@@ -537,6 +537,161 @@ def mediciones_negativas():
         print(f"❌ ERROR en /api/mediciones_negativas: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
 
+#--------------------- CRUD PAPERS - endpoints de papers para visualizarlos ---------------------
+
+def parse_pagination():
+    try:
+        limit = max(1, min(int(request.args.get("limit", 10)), 100))
+    except:
+        limit = 10
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except:
+        page = 1
+    offset = (page - 1) * limit
+    return limit, page, offset
+
+@app.route("/api/library/list", methods=["GET"])
+def library_list():
+    """
+    Lista documentos con paginación y orden.
+    sort: year_desc | year_asc | citations_desc | citations_asc | title_asc
+    """
+    limit, page, offset = parse_pagination()
+    sort = (request.args.get("sort") or "year_desc").lower()
+
+    order_by = {
+        "year_desc": "year DESC NULLS LAST, COALESCE(citations,0) DESC, title",
+        "year_asc": "year ASC NULLS FIRST, title",
+        "citations_desc": "COALESCE(citations,0) DESC, year DESC NULLS LAST, title",
+        "citations_asc": "COALESCE(citations,0) ASC, year DESC NULLS LAST, title",
+        "title_asc": "title ASC"
+    }.get(sort, "year DESC NULLS LAST, COALESCE(citations,0) DESC, title")
+
+    sql_count = "SELECT COUNT(*) FROM oogsj_data.document;"
+    sql_page = f"""
+        SELECT id, title, year, venue, COALESCE(citations,0) AS citations, url, doi
+        FROM oogsj_data.document
+        ORDER BY {order_by}
+        LIMIT %s OFFSET %s;
+    """
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(sql_count)
+    total = cur.fetchone()[0]
+
+    cur.execute(sql_page, (limit, offset))
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+
+    items = []
+    for r in rows:
+        items.append({
+            "id": r[0], "title": r[1], "year": r[2], "venue": r[3],
+            "citations": r[4], "url": r[5], "doi": r[6]
+        })
+
+    return jsonify({
+        "page": page, "limit": limit, "total": total, "items": items
+    })
+
+@app.route("/api/library/search", methods=["GET"])
+def library_search():
+    """
+    Busca por coincidencia en title/venue/doi/url con paginación.
+    """
+    q = (request.args.get("q") or "").strip()
+    limit, page, offset = parse_pagination()
+
+    base_where = "1=1"
+    params = []
+    if q:
+        base_where = "(title ILIKE %s OR venue ILIKE %s OR doi ILIKE %s OR url ILIKE %s)"
+        pat = f"%{q}%"
+        params = [pat, pat, pat, pat]
+
+    sql_count = f"SELECT COUNT(*) FROM oogsj_data.document WHERE {base_where};"
+    sql_page = f"""
+        SELECT id, title, year, venue, COALESCE(citations,0) AS citations, url, doi
+        FROM oogsj_data.document
+        WHERE {base_where}
+        ORDER BY year DESC NULLS LAST, COALESCE(citations,0) DESC, title
+        LIMIT %s OFFSET %s;
+    """
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(sql_count, params)
+    total = cur.fetchone()[0]
+
+    cur.execute(sql_page, params + [limit, offset])
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+
+    items = []
+    for r in rows:
+        items.append({
+            "id": r[0], "title": r[1], "year": r[2], "venue": r[3],
+            "citations": r[4], "url": r[5], "doi": r[6]
+        })
+
+    return jsonify({
+        "q": q, "page": page, "limit": limit, "total": total, "items": items
+    })
+
+@app.route("/api/library/<int:doc_id>", methods=["GET"])
+def library_detail(doc_id: int):
+    """
+    Devuelve un documento por id. Ideal para vista de detalle.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, title, year, venue, COALESCE(citations,0) AS citations, url, doi
+        FROM oogsj_data.document
+        WHERE id = %s
+        LIMIT 1;
+    """, (doc_id,))
+    r = cur.fetchone()
+    cur.close(); conn.close()
+
+    if not r:
+        return jsonify({"error": "not found"}), 404
+
+    return jsonify({
+        "id": r[0], "title": r[1], "year": r[2], "venue": r[3],
+        "citations": r[4], "url": r[5], "doi": r[6]
+    })
+
+@app.route("/api/library/autocomplete", methods=["GET"])
+def library_autocomplete():
+    """
+    Devuelve hasta N títulos que coinciden con q (para el input de búsqueda).
+    """
+    q = (request.args.get("q") or "").strip()
+    try:
+        limit = max(1, min(int(request.args.get("limit", 8)), 20))
+    except:
+        limit = 8
+
+    if not q:
+        return jsonify([])
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, title
+        FROM oogsj_data.document
+        WHERE title ILIKE %s
+        ORDER BY year DESC NULLS LAST, title
+        LIMIT %s;
+    """, (f"%{q}%", limit))
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+
+    return jsonify([{"id": r[0], "title": r[1]} for r in rows])
+
 
 
 
