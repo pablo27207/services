@@ -6,6 +6,7 @@
   import Especies from "$lib/components/Biblioteca/Especies.svelte";
   import Noticias from "$lib/components/Biblioteca/Noticias.svelte"; // ← Crear este si no existe
   import EnConstruccion from "$lib/components/EnConstruccion.svelte";
+  import PapersExplorer from "$lib/components/Biblioteca/PapersExplorer.svelte";
   let seccionSeleccionada = "especies";
 
 
@@ -143,26 +144,21 @@
 <!-- 🔁 Contenido dinámico -->
  
 <section class="mt-10 px-4 ">
-  
-
   {#if seccionSeleccionada === "especies"}
     <div class="max-w-5xl mx-auto">
       <Especies />
     </div>
+
   {:else if seccionSeleccionada === "documento"}
-    
-      <!--<PaperList {papers} />-->
-      <EnConstruccion titulo="Documentos científicos" mensaje="Esta sección contendrá estudios y publicaciones generados a partir de los datos del observatorio. Pronto estará disponible para consulta pública."/>
+    <PapersExplorer />
 
-
-    
-  
   {:else if seccionSeleccionada === "noticias"}
     <div class="max-w-4xl mx-auto">
       <Noticias />
     </div>
   {/if}
 </section>
+
 <br>
 
  📄<!-- Pie de página -->
