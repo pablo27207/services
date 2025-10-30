@@ -11,8 +11,32 @@ from flask_mail import Mail, Message
 from flask import Blueprint
 from datetime import datetime, timedelta
 
+from pathlib import Path
+from werkzeug.utils import secure_filename
+import uuid
+
+
+
 
 app = Flask(__name__)
+
+
+# Carpeta donde guardar PDFs (montada en el contenedor)
+app.config["UPLOAD_FOLDER"] = os.getenv("UPLOAD_FOLDER", "/app/uploads")
+Path(app.config["UPLOAD_FOLDER"]).mkdir(parents=True, exist_ok=True)
+
+ALLOWED_MIMES = {"application/pdf"}
+MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
+
+def allowed_file(filename, mimetype):
+    ext_ok = "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTS
+    return ext_ok or (mimetype in ALLOWED_MIMES)
+
+# Servir archivos subidos en dev (en prod lo hace Nginx con alias)
+@app.route("/files/<path:filename>")
+def serve_uploaded_file(filename):
+    return send_from_directory(app.config["UPLOAD_FOLDER"], filename, as_attachment=False)
+
 
 #------------Para enviar emails--------------------------------------
 # 🔧 Configuración de correo (ejemplo con Gmail)
@@ -537,7 +561,7 @@ def mediciones_negativas():
         print(f"❌ ERROR en /api/mediciones_negativas: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
 
-#--------------------- CRUD PAPERS - endpoints de papers para visualizarlos ---------------------
+#--------------------- endpoints de papers para visualizarlos ---------------------
 
 def parse_pagination():
     try:
@@ -639,6 +663,133 @@ def library_detail(doc_id: int):
         "title": r[0], "year": r[1], "venue": r[2],
         "citations": r[3], "url": r[4], "doi": r[5]
     })
+
+
+#--------------------------CRUD PAPERS-----------------------------------#
+
+@app.route("/api/library/upload", methods=["POST"])
+def library_upload():
+    # --- validaciones básicas ---
+    if request.content_length and request.content_length > MAX_UPLOAD_BYTES:
+        return jsonify({"error": "Archivo demasiado grande (>50 MB)"}), 413
+
+    file = request.files.get("file")
+    if not file:
+        return jsonify({"error": "Falta el archivo 'file'"}), 400
+    if file.mimetype not in ALLOWED_MIMES:
+        return jsonify({"error": f"Tipo no permitido: {file.mimetype}"}), 415
+
+    title = (request.form.get("title") or "").strip()
+    if not title:
+        return jsonify({"error": "Falta 'title'"}), 400
+
+    # campos opcionales
+    year = request.form.get("year")
+    venue = request.form.get("venue")
+    doi = request.form.get("doi")
+    url = request.form.get("url")
+    abstract = request.form.get("abstract")
+    authors_raw = (request.form.get("authors") or "").strip()
+    # autores separados por ; o ,  -> lista limpia con orden
+    authors = [a.strip() for chunk in authors_raw.split(";") for a in chunk.split(",") if a.strip()]
+    # Si vinieron "Apellido, Nombre; Apellido, Nombre" no está mal; nos quedamos con el orden recibido.
+
+    # --- guardar a disco ---
+    base = secure_filename(title) or "document"
+    f_uuid = uuid.uuid4().hex
+    filename = f"{base}-{f_uuid}.pdf"
+    dst_path = Path(app.config["UPLOAD_FOLDER"]) / filename
+    file.save(dst_path)
+
+    # Ruta “lógica” por si luego la servís con Nginx
+    storage_path = str(dst_path)  # absoluta en el contenedor
+    file_url = f"/files/{filename}"  # ver endpoint de files más abajo o servilo con Nginx
+
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+
+        # --- insertar document ---
+        cur.execute("""
+            INSERT INTO oogsj_data.document (title, year, venue, citations, url, doi, storage_path)
+            VALUES (%s, %s, %s, 0, %s, %s, %s)
+            RETURNING id;
+        """, (title, int(year) if (year and year.isdigit()) else None, venue or None, url or None, doi or None, storage_path))
+        doc_id = cur.fetchone()[0]
+
+        # --- autores (upsert por nombre) + relación con orden ---
+        order_n = 1
+        for full_name in authors:
+            cur.execute("""
+                INSERT INTO oogsj_data.author (full_name)
+                VALUES (%s)
+                ON CONFLICT (full_name) DO UPDATE SET full_name = EXCLUDED.full_name
+                RETURNING id;
+            """, (full_name,))
+            author_id = cur.fetchone()[0]
+            cur.execute("""
+                INSERT INTO oogsj_data.document_author (document_id, author_id, author_order)
+                VALUES (%s, %s, %s)
+                ON CONFLICT DO NOTHING;
+            """, (doc_id, author_id, order_n))
+            order_n += 1
+
+        # --- document_source ---
+        cur.execute("""
+            INSERT INTO oogsj_data.document_source (document_id, source_type, uploaded_by, source_name, raw_payload)
+            VALUES (%s, 'user_upload', NULL, 'carga manual', %s);
+        """, (doc_id, None))
+
+        conn.commit()
+        cur.close()
+
+        return jsonify({
+            "ok": True,
+            "data": {
+                "id": doc_id,
+                "title": title,
+                "year": int(year) if (year and year.isdigit()) else None,
+                "venue": venue,
+                "doi": doi,
+                "url": url,
+                "file_url": file_url
+            }
+        }), 201
+
+    except Exception as e:
+        conn.rollback()
+        # si falló DB, borramos el archivo para no dejar basura
+        try:
+            dst_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        print(f"❌ ERROR /api/library/upload: {e}")
+        return jsonify({"ok": False, "error": "No se pudo guardar el documento"}), 500
+    finally:
+        conn.close()
+
+
+
+@app.route("/api/library/admin/list", methods=["GET"])
+def library_admin_list():
+    limit, page, offset = parse_pagination()
+    conn = get_db_connection(); cur = conn.cursor()
+    cur.execute("""
+        SELECT id, title, year, venue, COALESCE(citations,0) AS citations, url, doi, storage_path, created_at
+        FROM oogsj_data.document
+        ORDER BY created_at DESC
+        LIMIT %s OFFSET %s;
+    """, (limit, offset))
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+
+    items = [{
+        "id": r[0], "title": r[1], "year": r[2], "venue": r[3],
+        "citations": r[4], "url": r[5], "doi": r[6],
+        "storage_path": r[7], "created_at": r[8].isoformat() if r[8] else None
+    } for r in rows]
+
+    return jsonify({"page": page, "limit": limit, "items": items})
 
 
 
