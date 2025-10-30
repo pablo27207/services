@@ -10,19 +10,22 @@
   let loading = false;
   let errorMsg = '';
   let total = 0;
-  let items: Array<{
-    id: number;
+
+  type DocItem = {
     title: string;
     year: number | null;
     venue: string | null;
     citations: number;
     url: string | null;
     doi: string | null;
-  }> = [];
+  };
 
-  // --- Helpers ---
+  let items: DocItem[] = [];
+
+  // --- Config ---
   const endpointBase = '/api/library';
 
+  // --- Helpers ---
   async function fetchList() {
     loading = true;
     errorMsg = '';
@@ -31,24 +34,26 @@
         q.trim().length > 0
           ? `${endpointBase}/search?q=${encodeURIComponent(q)}&limit=${limit}&page=${page}`
           : `${endpointBase}/list?sort=${sort}&limit=${limit}&page=${page}`;
+
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+
       items = data.items ?? [];
       total = data.total ?? 0;
     } catch (e) {
-      errorMsg = 'No pude cargar los documentos. Probá de nuevo.';
       console.error(e);
+      errorMsg = 'No pude cargar los documentos. Probá de nuevo.';
     } finally {
       loading = false;
     }
   }
 
-  // debounce para el buscador
+  // Debounce del buscador
   let t: ReturnType<typeof setTimeout> | null = null;
   function onSearchInput(v: string) {
     q = v;
-    page = 1; // reset página al cambiar búsqueda
+    page = 1;
     if (t) clearTimeout(t);
     t = setTimeout(fetchList, 350);
   }
@@ -59,6 +64,7 @@
       fetchList();
     }
   }
+
   function goNext() {
     const maxPage = Math.max(1, Math.ceil(total / limit));
     if (page < maxPage) {
@@ -68,18 +74,35 @@
   }
 
   function onChangeSort(v: string) {
-    // si hay búsqueda activa, mantenemos búsqueda; si no, ordenamos la lista
-    sort = (v as typeof sort);
+    sort = v as typeof sort;
     page = 1;
     fetchList();
+  }
+
+  function doiHref(doi: string | null) {
+    if (!doi) return null;
+    const clean = doi.replace(/^https?:\/\/doi\.org\//i, '');
+    return `https://doi.org/${clean}`;
   }
 
   onMount(fetchList);
 </script>
 
-<!-- UI -->
+
+<style>
+  /* Blindaje contra numeraciones o bullets impuestos por CSS globales */
+  .no-list {
+    list-style: none !important;
+    padding-left: 0 !important;
+    counter-reset: none !important;
+  }
+  .no-list > li { counter-increment: none !important; }
+  .no-list > li::marker { content: '' !important; }
+  .no-list > li::before { content: none !important; }
+</style>
+
 <div class="max-w-5xl mx-auto mt-4 px-2 md:px-0">
-  <!-- Barra de búsqueda y orden -->
+  <!-- Búsqueda + orden -->
   <div class="flex flex-col md:flex-row gap-3 md:items-center md:justify-between mb-4">
     <div class="flex-1">
       <input
@@ -93,10 +116,12 @@
 
     <div class="flex items-center gap-2">
       <label class="text-sm opacity-70">Ordenar:</label>
-      <select class="select select-bordered"
+      <select
+        class="select select-bordered"
         bind:value={sort}
         on:change={(e) => onChangeSort((e.target as HTMLSelectElement).value)}
-        disabled={q.trim().length > 0 /* en búsqueda no forzamos orden diferente al default del backend */}
+        disabled={q.trim().length > 0}
+        title={q.trim().length > 0 ? 'El orden se fija en modo búsqueda' : 'Cambiar orden'}
       >
         <option value="year_desc">Año ↓ (recientes)</option>
         <option value="year_asc">Año ↑</option>
@@ -107,7 +132,6 @@
     </div>
   </div>
 
-  <!-- Estado -->
   {#if loading}
     <div class="text-center py-8 opacity-80">Cargando…</div>
   {:else if errorMsg}
@@ -115,40 +139,34 @@
   {:else if items.length === 0}
     <div class="text-center py-8 opacity-70">Sin resultados.</div>
   {:else}
-    <!-- Lista -->
-    <ol class="space-y-3">
-      {#each items as it, i}
+    <!-- Lista: sin numeración -->
+    <ul class="space-y-3 no-list">
+      {#each items as it}
         <li class="card bg-base-100 border border-base-300 shadow-sm">
           <div class="card-body p-4">
-            <!-- Línea 1: “03. Título” -->
-            <h3 class="font-semibold text-lg">
-              {String((page - 1) * limit + i + 1).padStart(2, '0')}. {it.title}
-            </h3>
+            <!-- Título -->
+            <h3 class="font-semibold text-lg leading-snug">{it.title}</h3>
 
-            <!-- Línea 2: “Año: | Citas: | Venue:” -->
-            <p class="text-sm opacity-80">
-              Año: {it.year ?? '—'}
-              {" | "}
-              Citas: {it.citations ?? 0}
-              {" | "}
-              Venue: {it.venue ?? '—'}
-            </p>
+            <!-- Badges -->
+            <div class="mt-1 flex flex-wrap gap-2 text-xs">
+              <span class="badge">{it.year ?? '—'}</span>
+              <span class="badge badge-ghost">Citas: {it.citations ?? 0}</span>
+              {#if it.venue}<span class="badge badge-outline">{it.venue}</span>{/if}
+            </div>
 
             <!-- Acciones -->
-            <div class="mt-2 flex flex-wrap gap-2">
+            <div class="mt-3 flex flex-wrap gap-2">
               {#if it.url}
                 <a class="btn btn-sm" href={it.url} target="_blank" rel="noopener noreferrer">Ver fuente</a>
               {/if}
               {#if it.doi}
-                <a class="btn btn-sm btn-outline" href={'https://doi.org/' + it.doi.replace('https://doi.org/','')} target="_blank" rel="noopener noreferrer">
-                  DOI
-                </a>
+                <a class="btn btn-sm btn-outline" href={doiHref(it.doi)} target="_blank" rel="noopener noreferrer">DOI</a>
               {/if}
             </div>
           </div>
         </li>
       {/each}
-    </ol>
+    </ul>
 
     <!-- Paginación -->
     <div class="mt-6 flex items-center justify-between">
