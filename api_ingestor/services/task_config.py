@@ -33,6 +33,12 @@ TASKS = {
        "scraper": WeatherCMScraper.fetch_station_data,
        "schedule": crontab(minute="*/10")  # Cada 10 min
     }
+    ,
+    #probando haciendolo de cero
+    "documentos_scraper": {
+       "scraper":  ScientificDocScraper.fetch_data,
+       "schedule": crontab(minute="*/10")  # Cada 10 min
+    }
 }
 
 # Para poder agregar un nuevo scraper hay que:
