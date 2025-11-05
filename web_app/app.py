@@ -575,38 +575,96 @@ def parse_pagination():
     offset = (page - 1) * limit
     return limit, page, offset
 
+
 @app.route("/api/library/list", methods=["GET"])
 def library_list():
+    # --- paginación segura ---
     limit, page, offset = parse_pagination()
+
+    # --- orden permitido (whitelist) ---
     sort = (request.args.get("sort") or "year_desc").lower()
-
     order_by = {
-        "year_desc": "year DESC NULLS LAST, COALESCE(citations,0) DESC, title",
-        "year_asc": "year ASC NULLS FIRST, title",
-        "citations_desc": "COALESCE(citations,0) DESC, year DESC NULLS LAST, title",
-        "citations_asc": "COALESCE(citations,0) ASC, year DESC NULLS LAST, title",
-        "title_asc": "title ASC"
-    }.get(sort, "year DESC NULLS LAST, COALESCE(citations,0) DESC, title")
+        "year_desc":       "d.year DESC NULLS LAST, COALESCE(d.citations,0) DESC, d.title ASC",
+        "year_asc":        "d.year ASC  NULLS FIRST, d.title ASC",
+        "citations_desc":  "COALESCE(d.citations,0) DESC, d.year DESC NULLS LAST, d.title ASC",
+        "citations_asc":   "COALESCE(d.citations,0) ASC,  d.year DESC NULLS LAST, d.title ASC",
+        "title_asc":       "d.title ASC NULLS LAST"
+    }.get(sort, "d.year DESC NULLS LAST, COALESCE(d.citations,0) DESC, d.title ASC")
 
+    # --- SQL: total y página con autores + has_local_file ---
     sql_count = "SELECT COUNT(*) FROM oogsj_data.document;"
+
     sql_page = f"""
-        SELECT title, year, venue, COALESCE(citations,0) AS citations, url, doi
-        FROM oogsj_data.document
+        SELECT
+            d.id,
+            d.title,
+            d.year,
+            d.venue,
+            COALESCE(d.citations, 0) AS citations,
+            d.url,
+            d.doi,
+            (d.storage_path IS NOT NULL) AS has_local_file,
+            d.id AS canonical_id,            -- placeholder hasta que migremos duplicados
+            FALSE AS is_duplicate,           -- idem
+            COALESCE(
+              json_agg(
+                json_build_object('id', a.id, 'full_name', a.full_name)
+                ORDER BY da.author_order
+              ) FILTER (WHERE a.id IS NOT NULL),
+              '[]'::json
+            ) AS authors
+        FROM oogsj_data.document d
+        LEFT JOIN oogsj_data.document_author da ON da.document_id = d.id
+        LEFT JOIN oogsj_data.author a          ON a.id = da.author_id
+        GROUP BY d.id
         ORDER BY {order_by}
         LIMIT %s OFFSET %s;
     """
 
-    conn = get_db_connection(); cur = conn.cursor()
-    cur.execute(sql_count); total = cur.fetchone()[0]
-    cur.execute(sql_page, (limit, offset)); rows = cur.fetchall()
-    cur.close(); conn.close()
+    conn = get_db_connection()
+    cur  = conn.cursor()
+    try:
+        cur.execute(sql_count)
+        total = cur.fetchone()[0]
 
-    items = [{
-        "title": r[0], "year": r[1], "venue": r[2],
-        "citations": r[3], "url": r[4], "doi": r[5]
-    } for r in rows]
+        cur.execute(sql_page, (limit, offset))
+        rows = cur.fetchall()
+    finally:
+        cur.close()
+        conn.close()
 
-    return jsonify({"page": page, "limit": limit, "total": total, "items": items})
+    # --- serialización ---
+    items = []
+    for r in rows:
+        (
+            doc_id, title, year, venue, citations,
+            url, doi, has_local_file, canonical_id, is_duplicate, authors_json
+        ) = r
+
+        items.append({
+            "id": doc_id,
+            "title": title,
+            "year": year,
+            "venue": venue,
+            "doi": doi,
+            "url": url,
+            "citations": citations,
+            "authors": authors_json or [],
+            "has_local_file": bool(has_local_file),
+            "canonical_id": canonical_id,
+            "is_duplicate": bool(is_duplicate),
+        })
+
+    return jsonify({
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "items": items
+    })
+
+
+
+
 
 
 
