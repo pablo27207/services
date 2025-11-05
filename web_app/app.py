@@ -1,12 +1,13 @@
 
 #----------Con esto debo hacer mi backend ---------------------------------------------#
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_file, abort
 import psycopg2
 import os
 import math
 import requests
 import time
 import hashlib
+import re
 from flask_mail import Mail, Message
 from flask import Blueprint
 from datetime import datetime, timedelta
@@ -665,44 +666,215 @@ def library_list():
 
 
 
-
-
-
 @app.route("/api/library/search", methods=["GET"])
 def library_search():
     q = (request.args.get("q") or "").strip()
     limit, page, offset = parse_pagination()
 
-    base_where = "1=1"
-    params = []
-    if q:
-        base_where = "(title ILIKE %s OR venue ILIKE %s OR doi ILIKE %s OR url ILIKE %s)"
-        pat = f"%{q}%"; params = [pat, pat, pat, pat]
+    # --- filtros opcionales ---
+    year_min = request.args.get("year_min")
+    year_max = request.args.get("year_max")
+    has_doi  = request.args.get("has_doi")   # "true"/"false"/None
+    has_file = request.args.get("has_file")  # "true"/"false"/None
 
-    sql_count = f"SELECT COUNT(*) FROM oogsj_data.document WHERE {base_where};"
+    # --- orden permitido (whitelist), igual a /list ---
+    sort = (request.args.get("sort") or "year_desc").lower()
+    sort_map = {
+        "year_desc":       "d.year DESC NULLS LAST, COALESCE(d.citations,0) DESC, d.title ASC",
+        "year_asc":        "d.year ASC NULLS FIRST, d.title ASC",
+        "citations_desc":  "COALESCE(d.citations,0) DESC, d.year DESC NULLS LAST, d.title ASC",
+        "citations_asc":   "COALESCE(d.citations,0) ASC,  d.year DESC NULLS LAST, d.title ASC",
+        "title_asc":       "d.title ASC NULLS LAST"
+    }
+    base_order = sort_map.get(sort, sort_map["year_desc"])
+
+    # --- heurística: si q "parece" DOI, priorizar match exacto por DOI ---
+    looks_like_doi = bool(re.match(r"^\s*10\.\S+$", q)) if q else False
+    relevance_order = ""
+    doi_exact_param = None
+    if q and looks_like_doi:
+        relevance_order = "CASE WHEN lower(d.doi) = lower(%s) THEN 0 ELSE 1 END, "
+        doi_exact_param = q
+
+    # --- WHERE dinámico con joins a autores ---
+    where_parts = ["1=1"]
+    params = []
+
+    if q:
+        # busco en title/venue/url/doi y también en autor
+        where_parts.append("("
+            "d.title ILIKE %s OR "
+            "d.venue ILIKE %s OR "
+            "d.doi   ILIKE %s OR "
+            "d.url   ILIKE %s OR "
+            "a.full_name ILIKE %s"
+        ")")
+        pat = f"%{q}%"
+        params.extend([pat, pat, pat, pat, pat])
+
+    if year_min and year_min.isdigit():
+        where_parts.append("d.year >= %s")
+        params.append(int(year_min))
+
+    if year_max and year_max.isdigit():
+        where_parts.append("d.year <= %s")
+        params.append(int(year_max))
+
+    if has_doi in ("true", "false"):
+        where_parts.append("d.doi IS NOT NULL" if has_doi == "true" else "d.doi IS NULL")
+
+    if has_file in ("true", "false"):
+        where_parts.append("(d.storage_path IS NOT NULL)" if has_file == "true" else "(d.storage_path IS NULL)")
+
+    where_sql = " AND ".join(where_parts)
+
+    # --- COUNT con DISTINCT porque hay join a autores ---
+    sql_count = f"""
+        SELECT COUNT(DISTINCT d.id)
+        FROM oogsj_data.document d
+        LEFT JOIN oogsj_data.document_author da ON da.document_id = d.id
+        LEFT JOIN oogsj_data.author a          ON a.id = da.author_id
+        WHERE {where_sql};
+    """
+
+    # --- página con autores (json_agg) y has_local_file ---
     sql_page = f"""
-        SELECT title, year, venue, COALESCE(citations,0) AS citations, url, doi
-        FROM oogsj_data.document
-        WHERE {base_where}
-        ORDER BY year DESC NULLS LAST, COALESCE(citations,0) DESC, title
+        SELECT
+            d.id,
+            d.title,
+            d.year,
+            d.venue,
+            COALESCE(d.citations, 0) AS citations,
+            d.url,
+            d.doi,
+            (d.storage_path IS NOT NULL) AS has_local_file,
+            d.id AS canonical_id,               -- placeholder hasta migrar duplicados
+            FALSE AS is_duplicate,              -- idem
+            COALESCE(
+              json_agg(
+                json_build_object('id', a.id, 'full_name', a.full_name)
+                ORDER BY da.author_order
+              ) FILTER (WHERE a.id IS NOT NULL),
+              '[]'::json
+            ) AS authors
+        FROM oogsj_data.document d
+        LEFT JOIN oogsj_data.document_author da ON da.document_id = d.id
+        LEFT JOIN oogsj_data.author a          ON a.id = da.author_id
+        WHERE {where_sql}
+        GROUP BY d.id
+        ORDER BY {relevance_order}{base_order}
         LIMIT %s OFFSET %s;
     """
 
-    conn = get_db_connection(); cur = conn.cursor()
-    cur.execute(sql_count, params); total = cur.fetchone()[0]
-    cur.execute(sql_page, params + [limit, offset]); rows = cur.fetchall()
-    cur.close(); conn.close()
+    conn = get_db_connection()
+    cur  = conn.cursor()
+    try:
+        # total
+        cur.execute(sql_count, params)
+        total = cur.fetchone()[0]
 
-    items = [{
-        "title": r[0], "year": r[1], "venue": r[2],
-        "citations": r[3], "url": r[4], "doi": r[5]
-    } for r in rows]
+        # página (si hay boost por DOI exacto, ese param va primero)
+        page_params = list(params)
+        if relevance_order:
+            page_params.append(doi_exact_param)
+        page_params.extend([limit, offset])
 
-    return jsonify({"q": q, "page": page, "limit": limit, "total": total, "items": items})
+        cur.execute(sql_page, page_params)
+        rows = cur.fetchall()
+    finally:
+        cur.close()
+        conn.close()
+
+    # --- serialización ---
+    items = []
+    for (
+        doc_id, title, year, venue, citations, url, doi,
+        has_local_file, canonical_id, is_duplicate, authors_json
+    ) in rows:
+        items.append({
+            "id": doc_id,
+            "title": title,
+            "year": year,
+            "venue": venue,
+            "doi": doi,
+            "url": url,
+            "citations": citations,
+            "authors": authors_json or [],
+            "has_local_file": bool(has_local_file),
+            "canonical_id": canonical_id,
+            "is_duplicate": bool(is_duplicate),
+        })
+
+    return jsonify({
+        "q": q,
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "items": items
+    })
 
 
+
+#ojo con estoooo
 @app.route("/api/library/<int:doc_id>", methods=["GET"])
 def library_detail(doc_id: int):
+    conn = get_db_connection()
+    cur  = conn.cursor()
+    try:
+        # Documento + autores (ordenados)
+        cur.execute("""
+            SELECT
+                d.id,
+                d.title,
+                d.year,
+                d.venue,
+                COALESCE(d.citations, 0) AS citations,
+                d.url,
+                d.doi,
+                d.storage_path,
+                COALESCE(
+                  json_agg(
+                    json_build_object('id', a.id, 'full_name', a.full_name)
+                    ORDER BY da.author_order
+                  ) FILTER (WHERE a.id IS NOT NULL),
+                  '[]'::json
+                ) AS authors
+            FROM oogsj_data.document d
+            LEFT JOIN oogsj_data.document_author da ON da.document_id = d.id
+            LEFT JOIN oogsj_data.author a          ON a.id = da.author_id
+            WHERE d.id = %s
+            GROUP BY d.id;
+        """, (doc_id,))
+        row = cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
+
+    if not row:
+        return jsonify({"error": "not found"}), 404
+
+    (r_id, title, year, venue, citations, url, doi, storage_path, authors_json) = row
+    has_local_file = bool(storage_path)
+
+    data = {
+        "id": r_id,
+        "title": title,
+        "year": year,
+        "venue": venue,
+        "doi": doi,
+        "url": url,
+        "citations": citations,
+        "authors": authors_json or [],
+        "has_local_file": has_local_file,
+        "download_url": f"/api/library/file/{r_id}" if has_local_file else None,
+        # placeholders hasta migrar duplicados
+        "canonical_id": r_id,
+        "is_duplicate": False
+    }
+    return jsonify(data)
+
+
+
     # Nota: seguimos aceptando el doc_id en la URL, pero no lo devolvemos en el JSON.
     conn = get_db_connection(); cur = conn.cursor()
     cur.execute("""
@@ -721,6 +893,63 @@ def library_detail(doc_id: int):
         "title": r[0], "year": r[1], "venue": r[2],
         "citations": r[3], "url": r[4], "doi": r[5]
     })
+
+
+@app.route("/api/library/file/<int:doc_id>", methods=["GET"])
+def library_file_download(doc_id: int):
+    # (si tenés auth/roles, validalo acá antes de servir)
+    conn = get_db_connection()
+    cur  = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT storage_path, title
+            FROM oogsj_data.document
+            WHERE id = %s
+            LIMIT 1;
+        """, (doc_id,))
+        row = cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
+
+    if not row:
+        return jsonify({"error": "not found"}), 404
+
+    storage_path, title = row
+    if not storage_path:
+        return jsonify({"error": "no_local_file"}), 404
+
+    # Seguridad: la ruta debe vivir dentro de UPLOAD_FOLDER
+    uploads_root = Path(app.config["UPLOAD_FOLDER"]).resolve()
+    file_path    = Path(storage_path).resolve()
+
+    try:
+        file_path.relative_to(uploads_root)
+    except Exception:
+        # Ruta fuera de uploads => bloquear
+        return jsonify({"error": "forbidden_path"}), 403
+
+    if not file_path.exists():
+        return jsonify({"error": "file_missing"}), 404
+
+    # Nombre de descarga prolijo
+    base_name = secure_filename(title or "document")
+    download_name = f"{base_name}.pdf"
+
+    # Sirve como attachment
+    return send_file(
+        str(file_path),
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=download_name,
+        max_age=3600  # cache 1h si querés
+    )
+
+
+
+
+
+
 
 
 #--------------------------CRUD PAPERS-----------------------------------#
