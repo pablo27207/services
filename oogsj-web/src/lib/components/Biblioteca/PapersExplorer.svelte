@@ -9,8 +9,8 @@
 
   let hasDoi: boolean | null = null;   // null = no filtrar, true/false filtran
   let hasFile: boolean | null = null;
-  let yearMin: number | null = null;
-  let yearMax: number | null = null;
+  let yearMin: number | null = 1950;
+  let yearMax: number | null = new Date().getFullYear();
 
   // --- Estado de datos/UI ---
   let loading = false;
@@ -241,8 +241,25 @@
 
     <!-- Rango de años -->
     <div class="md:col-span-2 flex gap-2">
-      <input type="number" class="input input-bordered w-full" placeholder="Año mín." min="0" on:change={(e)=>onYearMin((e.target as HTMLInputElement).value)} value={yearMin ?? ''} />
-      <input type="number" class="input input-bordered w-full" placeholder="Año máx." min="0" on:change={(e)=>onYearMax((e.target as HTMLInputElement).value)} value={yearMax ?? ''} />
+      <input
+  type="number"
+  class="input input-bordered w-full"
+  placeholder="Año mín."
+  min="1900"
+  max={new Date().getFullYear()}
+  bind:value={yearMin}
+  on:change={(e)=>onYearMin((e.target as HTMLInputElement).value)}
+/>
+
+<input
+  type="number"
+  class="input input-bordered w-full"
+  placeholder="Año máx."
+  min="1900"
+  max={new Date().getFullYear()}
+  bind:value={yearMax}
+  on:change={(e)=>onYearMax((e.target as HTMLInputElement).value)}
+/>
     </div>
 
     <!-- Orden -->
