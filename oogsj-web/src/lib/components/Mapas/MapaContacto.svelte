@@ -49,12 +49,15 @@
 
       map = L.map(mapElement).setView([coordenadas.lat, coordenadas.lon], getZoomLevel());
 
-      const ignLayer = L.tileLayer.wms('https://wms.ign.gob.ar/geoserver/ows?', {
-        layers: 'capabaseargenmap',
-        format: 'image/png',
-        transparent: false,
-        attribution: ''
-      });
+      const ignLayer = L.tileLayer(
+        'https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/' +
+        'capabaseargenmap@EPSG:3857@png/{z}/{x}/{-y}.png',
+        {
+          tms: true,
+          attribution: '© IGN Argentina',
+          maxZoom: 18
+        }
+      );
 
       const esriLayer = L.tileLayer(
         'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',

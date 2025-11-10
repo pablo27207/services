@@ -8,22 +8,18 @@
   const coordenadasHudson = { lat: -45.8299047, lon: -67.4666491 };
   const coordenadasBoyaComII = { lat: -45.876267, lon: -67.448823 };
 
+  // Tamaño dinámico de íconos
   function getIconSize() {
     const width = window.innerWidth;
-
-    if (width < 600) {
-      return [10, 10]; // Pequeño para móviles
-    } else if (width < 1024) {
-      return [15, 15]; // Mediano para tablets
-    } else {
-      return [20, 20]; // Normal para pantallas grandes
-    }
+    if (width < 600) return [10, 10];     // Móviles
+    else if (width < 1024) return [15, 15]; // Tablets
+    else return [20, 20];                 // Pantallas grandes
   }
 
+  // Actualiza íconos al cambiar tamaño
   function updateIcons(L: any) {
     if (!map) return;
 
-    // Crear los íconos con el nuevo tamaño
     const customIconBoya = L.icon({
       iconUrl: '/imagenes/Iconos/boya-logo-black.png',
       iconSize: getIconSize(),
@@ -36,66 +32,69 @@
       iconAnchor: [getIconSize()[0] / 2, getIconSize()[1]],
     });
 
-    // Eliminar todos los marcadores antes de agregar los nuevos
+    // Limpia marcadores viejos
     map.eachLayer((layer) => {
-      if (layer instanceof L.Marker) {
-        map.removeLayer(layer);
-      }
+      if (layer instanceof L.Marker) map.removeLayer(layer);
     });
 
-    // Agregar marcador para la boya Comodoro II
+    // Boya Comodoro II
     L.marker([coordenadasBoyaComII.lat, coordenadasBoyaComII.lon], { icon: customIconBoya })
       .addTo(map)
       .bindPopup('<b>Comodoro II</b>');
 
-    // Agregar marcador para Hudson 54
+    // Hudson 54
     L.marker([coordenadasHudson.lat, coordenadasHudson.lon], { icon: customIconLugar })
       .addTo(map)
       .bindPopup('<b>Hudson 54</b>');
   }
 
+  let resizeHandler: (() => void) | null = null;
+
   onMount(async () => {
-  if (typeof window !== 'undefined') {
-    const L = await import('leaflet');
-    import('leaflet/dist/leaflet.css');
+    if (typeof window !== 'undefined') {
+      const L = await import('leaflet');
+      import('leaflet/dist/leaflet.css');
 
-    map = L.map(mapElement).setView([coordenadasHudson.lat, coordenadasHudson.lon], 8);
+      // Inicializar mapa
+      map = L.map(mapElement).setView([coordenadasHudson.lat, coordenadasHudson.lon], 8);
 
-    // Capa del IGN con manejo de error
-    const ignLayer = L.tileLayer.wms('https://wms.ign.gob.ar/geoserver/ows?', {
-      layers: 'capabaseargenmap',
-      format: 'image/png',
-      transparent: false,
-      attribution: '&copy; <a href="https://www.ign.gob.ar/">IGN Argentina</a>'
-    });
-
-    ignLayer.on('tileerror', () => {
-      console.warn('No se pudo cargar la capa del IGN, cambiando a Esri.');
-
-      map.removeLayer(ignLayer);
-
-      const esriLayer = L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      // Capa base del IGN (TMS en lugar de WMS)
+      const ignLayer = L.tileLayer(
+        'https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/' +
+        'capabaseargenmap@EPSG:3857@png/{z}/{x}/{-y}.png',
         {
-          attribution: '&copy; Esri, Maxar, Earthstar Geographics'
+          tms: true,
+          attribution: '© IGN Argentina',
+          maxZoom: 18,
         }
       );
 
-      esriLayer.addTo(map);
-    });
+      // Fallback a Esri si falla el IGN
+      ignLayer.on('tileerror', () => {
+        console.warn('No se pudo cargar la capa del IGN, cambiando a Esri.');
+        map?.removeLayer(ignLayer);
 
-    ignLayer.addTo(map);
+        const esriLayer = L.tileLayer(
+          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          { attribution: '© Esri, Maxar, Earthstar Geographics' }
+        );
 
-    updateIcons(L);
+        esriLayer.addTo(map!);
+      });
 
-    window.addEventListener('resize', () => updateIcons(L));
-  }
-});
+      ignLayer.addTo(map);
 
+      // Cargar íconos iniciales
+      updateIcons(L);
 
+      // Manejar cambio de tamaño
+      resizeHandler = () => updateIcons(L);
+      window.addEventListener('resize', resizeHandler);
+    }
+  });
 
   onDestroy(() => {
-    window.removeEventListener('resize', () => updateIcons(L));
+    if (resizeHandler) window.removeEventListener('resize', resizeHandler);
   });
 </script>
 
@@ -108,4 +107,7 @@
   }
 </style>
 
-<div class="bg-base-100 w-full max-w-4xl shadow-xl flex flex-row items-center" bind:this={mapElement}></div>
+<div
+  class="bg-base-100 w-full max-w-4xl shadow-xl flex flex-row items-center"
+  bind:this={mapElement}
+></div>
