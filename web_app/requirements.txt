@@ -3,3 +3,5 @@ psycopg2-binary
 gunicorn
 requests
 Flask-Mail
+redis
+celery

@@ -15,6 +15,11 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from werkzeug.utils import secure_filename
 import uuid
+import redis
+import json
+from celery import Celery
+
+
 
 
 
@@ -118,6 +123,72 @@ def get_db_connection():
 def index():
     return render_template("index.html")
 
+#-------------------------------------------------------------------
+# Endpoint de Estado del Sistema
+#-------------------------------------------------------------------
+@app.route("/status")
+def status():
+    status_report = {
+        "database": "error",
+        "redis": "error",
+        "celery": "error",
+        "last_runs": {}
+    }
+
+    # 1. Verificar Base de Datos
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT 1")
+        cur.close()
+        conn.close()
+        status_report["database"] = "ok"
+    except Exception as e:
+        print(f"❌ Error DB: {e}")
+
+    # 2. Verificar Redis
+    try:
+        r = redis.Redis(host='cache', port=6379, db=0, socket_timeout=2)
+        if r.ping():
+            status_report["redis"] = "ok"
+            # Asumimos que si Redis responde, Celery (que usa Redis) tiene chance de estar vivo.
+            # Una verificación más profunda requeriría inspeccionar colas.
+            status_report["celery"] = "ok" 
+    except Exception as e:
+        print(f"❌ Error Redis: {e}")
+
+    # 3. Verificar Últimas Ejecuciones (consultando mediciones recientes)
+    if status_report["database"] == "ok":
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            # Consultamos la última medición de cada plataforma clave para ver si se están actualizando
+            platforms = {
+                "Mareógrafo": "Mareógrafo - Puerto Comodoro Rivadavia",
+                "Boya": "Boya CIDMAR-2",
+                "Estación Puerto CR": "APPCR Puerto CR",
+                "Estación Muelle CC": "APPCR Muelle CC"
+            }
+            
+            for key, platform_name in platforms.items():
+                cur.execute("""
+                    SELECT MAX(m.timestamp)
+                    FROM oogsj_data.measurement m
+                    JOIN oogsj_data.sensor s ON m.sensor_id = s.id
+                    JOIN oogsj_data.platform p ON s.platform_id = p.id
+                    WHERE p.name = %s
+                """, (platform_name,))
+                last_ts = cur.fetchone()[0]
+                status_report["last_runs"][key] = last_ts.isoformat() if last_ts else None
+            
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print(f"❌ Error consultando últimas ejecuciones: {e}")
+
+    return jsonify(status_report)
+
+
 # Ruta para obtener los datos del mareógrafo en formato JSON
 @app.route("/api/mareograph")
 def get_mareograph_data():
@@ -181,7 +252,38 @@ def get_buoy_data():
 
 
 
+
+#-------------------------------------------------------------------
+# Configuración de Celery (Cliente)
+#-------------------------------------------------------------------
+# Solo necesitamos el broker para enviar tareas
+celery_client = Celery('web_app_client', broker='redis://cache:6379/0')
+
+@app.route("/update/<task_name>", methods=["POST"])
+def trigger_update(task_name):
+    """
+    Endpoint para forzar la ejecución de una tarea de Celery.
+    Espera nombres de tarea como: 'buoy', 'mareograph', etc.
+    El nombre real en Celery es 'celery_tasks.fetch_{task_name}'.
+    """
+    full_task_name = f"celery_tasks.fetch_{task_name}"
+    
+    try:
+        # Usamos send_task para no necesitar importar el código de la tarea
+        result = celery_client.send_task(full_task_name)
+        return jsonify({
+            "status": "initiated", 
+            "task_name": task_name,
+            "celery_task": full_task_name,
+            "task_id": result.id
+        }), 202
+    except Exception as e:
+        print(f"❌ Error al enviar tarea {task_name}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/tide_forecast")
+
 def get_tide_forecast_data():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -441,7 +543,7 @@ def get_muelle_cc_data():
                 ORDER BY timestamp DESC
                 LIMIT 1
             ) m ON true
-            WHERE s.name LIKE '%%160710%%'
+            WHERE s.name LIKE '%%191512%%'
             ORDER BY s.name;
         """)
 
@@ -494,7 +596,7 @@ def get_muelle_cc_history():
             JOIN oogsj_data.variable v ON v.id = s.variable_id
             JOIN oogsj_data.unit u ON u.id = s.unit_id
             WHERE 
-                s.name LIKE '%%160710%%'
+                s.name LIKE '%%191512%%'
                 AND m.timestamp >= %s
             ORDER BY 
                 v.name, m.timestamp;

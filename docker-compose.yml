@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15
@@ -11,7 +9,7 @@ services:
       - db_data:/var/lib/postgresql/data
       - ./db_init/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}" ]
       interval: 10s
       timeout: 5s
       start_period: 60s
@@ -24,7 +22,7 @@ services:
     container_name: redis_cache
     restart: always
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -100,6 +98,8 @@ services:
       - api_ingestor
     env_file:
       - .env
+    ports:
+      - "5001:5001"
     restart: always
     volumes:
       - ./web_app:/app
@@ -148,7 +148,7 @@ services:
 volumes:
   db_data:
 
+
 networks:
   oogsj_network:
     name: oogsj_network
-

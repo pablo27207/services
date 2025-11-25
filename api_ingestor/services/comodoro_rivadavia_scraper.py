@@ -16,7 +16,7 @@ API_KEY = os.getenv("API_KEY_PUERTO")
 API_SECRET = os.getenv("API_SECRET_PUERTO")
 STATION_ID = '160710'
 PLATFORM_NAME = 'APPCR Puerto CR'
-LOCATION_ID = 1
+LOCATION_ID = 3
 
 DB_CONFIG = {
     'dbname': os.getenv("POSTGRES_DB"),
@@ -159,7 +159,7 @@ class WeatherCRScraper:
                     logging.info(msg)
                     continue
 
-                sensor_name = f"Sensor Virtual - {clave_json} - {STATION_ID}"
+                sensor_name = f"{clave_json} - {STATION_ID}"
                 sensor_id = WeatherCRScraper.asegurar_sensor_y_variable(
                     conn, nombre, unidad_si, simbolo_si, sensor_name, platform_id
                 )

@@ -152,12 +152,55 @@ class WeatherCMScraper:
         return datos_transformados
 
     @staticmethod
+    def asegurar_sensor_y_variable(conn, variable_name, unit_name, unit_symbol, sensor_name, platform_id):
+        """
+        Verifica si existen la variable, unidad y sensor en la DB.
+        Si no existen, los crea dinámicamente y retorna el ID del sensor.
+        """
+        cur = conn.cursor()
+
+        # 1. Verificar/Crear Variable
+        cur.execute("SELECT id FROM oogsj_data.variable WHERE name = %s", (variable_name,))
+        var = cur.fetchone()
+        if not var:
+            cur.execute("INSERT INTO oogsj_data.variable (name) VALUES (%s) RETURNING id", (variable_name,))
+            variable_id = cur.fetchone()[0]
+        else:
+            variable_id = var[0]
+
+        # 2. Verificar/Crear Unidad
+        cur.execute("SELECT id FROM oogsj_data.unit WHERE symbol = %s", (unit_symbol,))
+        unit = cur.fetchone()
+        if not unit:
+            cur.execute("INSERT INTO oogsj_data.unit (name, symbol) VALUES (%s, %s) RETURNING id",
+                        (unit_name, unit_symbol))
+            unit_id = cur.fetchone()[0]
+        else:
+            unit_id = unit[0]
+
+        # 3. Verificar/Crear Sensor
+        cur.execute("SELECT id FROM oogsj_data.sensor WHERE name = %s", (sensor_name,))
+        sensor = cur.fetchone()
+        if not sensor:
+            cur.execute("""
+                INSERT INTO oogsj_data.sensor (platform_id, name, variable_id, unit_id)
+                VALUES (%s, %s, %s, %s) RETURNING id
+            """, (platform_id, sensor_name, variable_id, unit_id))
+            sensor_id = cur.fetchone()[0]
+            print(f"✨ Sensor creado: {sensor_name}")
+        else:
+            sensor_id = sensor[0]
+
+        conn.commit()
+        return sensor_id
+
+    @staticmethod
     def insertar_datos_en_bd(datos_esenciales):
         """Inserta los datos procesados en la tabla de mediciones de la base de datos."""
         conn = None
         try:
             conn = psycopg2.connect(
-                dbname=os.getenv("POSTGRES_DB"), # Corregido de DB_NAME
+                dbname=os.getenv("POSTGRES_DB"),
                 user=os.getenv("POSTGRES_USER"),
                 password=os.getenv("POSTGRES_PASSWORD"),
                 host=os.getenv("POSTGRES_HOST"),
@@ -167,14 +210,50 @@ class WeatherCMScraper:
             
             timestamp = int(time.time())
             
+            # Mapeo auxiliar para nombres de variables y unidades (para creación dinámica)
+            VAR_INFO = {
+                "bar": ("Presión Barométrica", "Hectopascales", "hPa"),
+                "temp_in": ("Temperatura Interior", "Grados Celsius", "°C"),
+                "temp_out": ("Temperatura Exterior", "Grados Celsius", "°C"),
+                "wind_speed": ("Velocidad del Viento", "Metros por segundo", "m/s"),
+                "wind_dir": ("Dirección del Viento", "Grados", "°"),
+                "dew_point": ("Punto de Rocío", "Grados Celsius", "°C"),
+                "heat_index": ("Índice de Calor", "Grados Celsius", "°C"),
+                "wind_chill": ("Sensación Térmica", "Grados Celsius", "°C"),
+                "rain_rate_clicks": ("Tasa de Lluvia", "Milímetros por hora", "mm/h")
+            }
+
             for key, item in datos_esenciales.items():
-                map_info = WeatherCMScraper.SENSOR_DB_MAP.get(key)
-                if not map_info:
-                    print(f"⚠️ Clave '{key}' no encontrada en el mapeo de la base de datos.")
-                    continue
-                sensor_id = map_info["sensor_id"]
                 value = item["value"]
-                quality_flag = 4 if map_info["is_sentinel"] or value is None else 1
+                sensor_name_db = f"{key} - {WeatherCMScraper.STATION_ID}"
+                
+                # 1. Buscar si el sensor ya existe
+                cur.execute("SELECT id FROM oogsj_data.sensor WHERE name = %s", (sensor_name_db,))
+                result = cur.fetchone()
+                
+                sensor_id = None
+                
+                if result:
+                    sensor_id = result[0]
+                else:
+                    # 2. Si no existe, SOLO crearlo si el valor es válido (no None)
+                    if value is None:
+                        print(f"⚠️ Sensor '{sensor_name_db}' no existe y valor es None. Saltando creación.")
+                        continue
+                        
+                    if key in VAR_INFO:
+                        var_name, unit_name, unit_symbol = VAR_INFO[key]
+                        sensor_id = WeatherCMScraper.asegurar_sensor_y_variable(
+                            conn, var_name, unit_name, unit_symbol, sensor_name_db, WeatherCMScraper.PLATFORM_ID
+                        )
+                    else:
+                        print(f"⚠️ No hay info para crear sensor '{sensor_name_db}'. Saltando...")
+                        continue
+
+                # 3. Insertar el dato
+                quality_flag = 1  # Bueno
+                if value is None:
+                    quality_flag = 4 # Malo/Faltante
                 
                 query = sql.SQL("""
                     INSERT INTO oogsj_data.measurement
