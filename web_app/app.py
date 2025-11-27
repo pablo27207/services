@@ -1,25 +1,67 @@
 
 #----------Con esto debo hacer mi backend ---------------------------------------------#
-from flask import Flask, jsonify, render_template, request, send_file, abort
-import psycopg2
-import os
-import math
-import requests
-import time
-import hashlib
-import re
-from flask_mail import Mail, Message
-from flask import Blueprint
+from flask import Flask, jsonify, render_template, request, send_file, send_from_directory, abort, make_response
+import os, math, re, uuid
 from datetime import datetime, timedelta
-
 from pathlib import Path
+import psycopg2
+import jwt
+from passlib.hash import bcrypt
+from functools import wraps
 from werkzeug.utils import secure_filename
-import uuid
+from flask_mail import Mail, Message
 
 
 
 
 app = Flask(__name__)
+
+# === AUTH/JWT (debe ir antes de cualquier @admin_required) ===
+JWT_SECRET = os.getenv("JWT_SECRET", "cambia-esta-clave")
+JWT_ISS = "oogsj-auth"
+JWT_EXP_MIN = 120
+SECURE_COOKIES = os.getenv("SECURE_COOKIES", "false").lower() == "true"
+
+def _create_jwt(payload: dict):
+    now = datetime.utcnow()
+    to_encode = {"iss": JWT_ISS, "iat": now, "exp": now + timedelta(minutes=JWT_EXP_MIN), **payload}
+    return jwt.encode(to_encode, JWT_SECRET, algorithm="HS256")
+
+def _decode_jwt(token: str):
+    return jwt.decode(token, JWT_SECRET, algorithms=["HS256"], issuer=JWT_ISS)
+
+def _cookie_opts():
+    return dict(httponly=True, secure=SECURE_COOKIES, samesite="Lax", path="/")
+
+def current_user():
+    tok = request.cookies.get("auth_token")
+    if not tok:
+        return None
+    try:
+        data = _decode_jwt(tok)
+        return {
+            "id": data.get("uid"),
+            "email": data.get("email"),
+            "first_name": data.get("first_name"),
+            "last_name": data.get("last_name"),
+            "is_admin": bool(data.get("is_admin")),
+        }
+    except Exception:
+        return None
+
+def admin_required(fn):
+    @wraps(fn)
+    def _wrap(*args, **kwargs):
+        u = current_user()
+        if not u or not u["is_admin"]:
+            return jsonify({"error": "No autorizado"}), 401
+        return fn(*args, **kwargs)
+    return _wrap
+# === FIN AUTH/JWT ===
+
+
+
+
 
 
 # Carpeta donde guardar PDFs (montada en el contenedor)
@@ -42,12 +84,12 @@ def serve_uploaded_file(filename):
 #------------Para enviar emails--------------------------------------
 # 🔧 Configuración de correo (ejemplo con Gmail)
 
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'gfranco323@gmail.com'
-app.config['MAIL_PASSWORD'] = 'edfzzbicbaynuenl'
-app.config['MAIL_DEFAULT_SENDER'] = 'gfranco323@gmail.com'
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS','true').lower()=='true'
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', app.config['MAIL_USERNAME'])
 
 
 mail = Mail(app)
@@ -955,6 +997,7 @@ def library_file_download(doc_id: int):
 #--------------------------CRUD PAPERS-----------------------------------#
 
 @app.route("/api/library/upload", methods=["POST"])
+@admin_required
 def library_upload():
     # --- validaciones básicas ---
     if request.content_length and request.content_length > MAX_UPLOAD_BYTES:
@@ -1058,6 +1101,7 @@ def library_upload():
 
 
 @app.route("/api/library/admin/list", methods=["GET"])
+@admin_required
 def library_admin_list():
     limit, page, offset = parse_pagination()
     conn = get_db_connection(); cur = conn.cursor()
@@ -1077,6 +1121,102 @@ def library_admin_list():
     } for r in rows]
 
     return jsonify({"page": page, "limit": limit, "items": items})
+
+
+#---------------login del administrador , iniciar sesion, dashboard ------------------------------#
+JWT_SECRET = os.getenv("JWT_SECRET", "cambia-esta-clave")
+JWT_ISS = "oogsj-auth"
+JWT_EXP_MIN = 120  # 2 horas
+
+
+def _create_jwt(payload: dict):
+    now = datetime.utcnow()
+    to_encode = {"iss": JWT_ISS, "iat": now, "exp": now + timedelta(minutes=JWT_EXP_MIN), **payload}
+    return jwt.encode(to_encode, JWT_SECRET, algorithm="HS256")
+
+
+def _decode_jwt(token: str):
+    return jwt.decode(token, JWT_SECRET, algorithms=["HS256"], issuer=JWT_ISS)
+
+
+SECURE_COOKIES = os.getenv("SECURE_COOKIES", "false").lower() == "true"
+
+def _cookie_opts():
+    return dict(httponly=True, secure=SECURE_COOKIES, samesite="Lax", path="/")
+
+
+
+def current_user():
+    tok = request.cookies.get("auth_token")
+    if not tok:
+        return None
+    try:
+        data = _decode_jwt(tok)
+        return {
+            "id": data.get("uid"),
+            "email": data.get("email"),
+            "first_name": data.get("first_name"),
+            "last_name": data.get("last_name"),
+            "is_admin": bool(data.get("is_admin"))
+        }
+    except Exception:
+        return None
+
+
+def admin_required(fn):
+    @wraps(fn)
+    def _wrap(*args, **kwargs):
+        u = current_user()
+        if not u or not u["is_admin"]:
+            return jsonify({"error": "No autorizado"}), 401
+        return fn(*args, **kwargs)
+    return _wrap
+
+#--------------------endpoints auth-----------------
+@app.post("/api/auth/login")
+def auth_login():
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password") or ""
+    if not email or not password:
+        return jsonify({"error": "Credenciales inválidas"}), 400
+
+    conn = get_db_connection(); cur = conn.cursor()
+    cur.execute("""
+      SELECT id, first_name, last_name, email, COALESCE(password_hash,''), COALESCE(is_admin,false)
+      FROM oogsj_data."user"
+      WHERE LOWER(email)=LOWER(%s)
+    """, (email,))
+    row = cur.fetchone()
+    cur.close(); conn.close()
+
+    if not row or not row[4] or not bcrypt.verify(password, row[4]):
+        return jsonify({"error":"Email o contraseña incorrectos"}), 401
+
+    token = _create_jwt({
+        "uid": row[0], "email": row[3],
+        "first_name": row[1], "last_name": row[2],
+        "is_admin": row[5]
+    })
+    resp = make_response(jsonify({"ok": True}))
+    resp.set_cookie("auth_token", token, **_cookie_opts())
+    return resp
+
+
+@app.post("/api/auth/logout")
+def auth_logout():
+    resp = make_response(jsonify({"ok": True}))
+    resp.set_cookie("auth_token", "", expires=0, **_cookie_opts())
+    return resp
+
+
+@app.get("/api/auth/me")
+def auth_me():
+    u = current_user()
+    if not u:
+        return jsonify({"authenticated": False}), 200
+    return jsonify({"authenticated": True, "user": u}), 200
+
 
 
 
