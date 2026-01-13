@@ -2,20 +2,20 @@
   import { onMount } from 'svelte';
 
   let originalImages = [
-    "/imagenes/cola-ballena.jpeg",
-    "/imagenes/Pingüinos.jpeg",
-    "/imagenes/Península-valdez-chubut.jpeg",
-    "/imagenes/Despliegue-Boya/imagen1.jpg",
-    "/imagenes/Despliegue-Boya/imagen2.jpg",
-    "/imagenes/Despliegue-Boya/imagen3.jpg",
-    "/imagenes/Imagenes-comodoro-Ivan/imagen15.jpg",
-    "/imagenes/Imagenes-comodoro-Ivan/imagen10.jpg",
-    "/imagenes/Imagenes-comodoro-Ivan/imagen6.jpg",
-    "/imagenes/Costa-RadaTilly.jpg",
-    "/imagenes/loberia-rio-negro.jpeg",
-    "/imagenes/foto-boya-dia1.png",
-    "/imagenes/lobomarino-gaviotas.jpg",
-    "/imagenes/faro-comodoro-rivadavia.jpeg",
+    "/imagenes/cola-ballena.webp",
+    "/imagenes/Pingüinos.webp",
+    "/imagenes/Península-valdez-chubut.webp",
+    "/imagenes/Despliegue-Boya/imagen1.webp",
+    "/imagenes/Despliegue-Boya/imagen2.webp",
+    "/imagenes/Despliegue-Boya/imagen3.webp",
+    "/imagenes/Imagenes-comodoro-Ivan/imagen15.webp",
+    "/imagenes/Imagenes-comodoro-Ivan/imagen10.webp",
+    "/imagenes/Imagenes-comodoro-Ivan/imagen6.webp",
+    "/imagenes/Costa-RadaTilly.webp",
+    "/imagenes/loberia-rio-negro.webp",
+    "/imagenes/foto-boya-dia1.webp",
+    "/imagenes/lobomarino-gaviotas.webp",
+    "/imagenes/faro-comodoro-rivadavia.webp",
   ];
 
   let images = [];
