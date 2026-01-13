@@ -68,7 +68,7 @@ La flota pesquera está constituida fundamentalmente por buques arrastreros trad
 
 Formas de utilización
 Se exporta entero, H&G y filet interfoliado con o sin piel.`,
-      imagen: "../imagenes/Especies/abadejo.png", // debe estar en static/especies
+      imagen: "../imagenes/Especies/abadejo.webp", // debe estar en static/especies
       pdf: "../especiesPDF/abadejo.pdf",
       expandido: false,
     },
@@ -113,7 +113,7 @@ Capturado por flota de rada o ría con nasas y por flota costera con redes de ar
 
 Formas de utilización:
 Se exporta entero congelado, H&G y filetes con y sin piel. También se exporta fresco vía aérea. En el mercado interno se vende fresco entero.`,
-  imagen: "imagenes/Especies/besugo.png", // asegurate de tener esta imagen en static/especies
+  imagen: "imagenes/Especies/besugo.webp", // asegurate de tener esta imagen en static/especies
   pdf: "/especiesPDF/besugo.pdf", // colocá el PDF correspondiente en static/especiesPDF
   expandido: false
 }
@@ -166,7 +166,7 @@ En Mar del Plata se captura con lanchas de rada y red lámpara. En El Rincón, c
 
 Utilización:
 Principalmente para conservería y mercado interno.`,
-  imagen: "imagenes/Especies/caballa.png",
+  imagen: "imagenes/Especies/caballa.webp",
   pdf: "/especiesPDF/caballa.pdf",
   expandido: false
 },
@@ -210,7 +210,7 @@ Es una de las especies pesqueras más valiosas de la Argentina. Se exporta princ
 Pesca y uso:
 Se captura mediante redes de arrastre. La flota langostinera opera mayoritariamente en la provincia de Chubut y parte de Santa Cruz. Se utiliza tanto para consumo fresco como congelado o procesado (colas peladas, enteros cocidos, etc.).`,
   imagen: "imagenes/Especies/langostino.png",
-  pdf: "/especiesPDF/langostino.pdf",
+  pdf: "/especiesPDF/langostino.webp",
   expandido: false
 },
 
@@ -258,7 +258,7 @@ Principalmente por flota de altura con red de arrastre de fondo. También captur
 Uso:
 Base de la industria pesquera argentina. Se exporta como filet congelado, “fish block”, interfoliado, H&G (descabezado y eviscerado), en salazón, huevas congeladas y pescado entero fresco. Muy importante también en el mercado interno.`,
   imagen: "imagenes/Especies/merluza.png",
-  pdf: "/especiesPDF/merluza.pdf",
+  pdf: "/especiesPDF/merluza.webp",
   expandido: false
 },
 {
@@ -288,7 +288,7 @@ Características biológicas:
 
 Importancia pesquera:
 La centolla es muy apreciada y su carne es considerada un manjar. Su explotación está regulada en algunas áreas por vedas o uso limitado. En el Golfo San Jorge se están desarrollando nuevas pesquerías con trampas por la expansión poblacional en esa zona.`,
-  imagen: "imagenes/Especies/centolla.png",
+  imagen: "imagenes/Especies/centolla.webp",
   pdf: "",
   expandido: false
 }
@@ -324,7 +324,7 @@ Tiene valor comercial regional en Argentina y Uruguay, donde se lo captura con r
 
 Otros datos:  
 Debido a su biología y lento crecimiento, debe pescarse de forma controlada para evitar la sobreexplotación. Se lo considera una especie vulnerable en algunos informes regionales de evaluación pesquera.`,
-  imagen: "imagenes/Especies/PezGallo.png",
+  imagen: "imagenes/Especies/PezGallo.webp",
   pdf: "", // Podés agregar la ruta cuando tengas el PDF, por ejemplo: "/especiesPDF/pezGallo.pdf"
   expandido: false
 },
@@ -360,7 +360,7 @@ Tiene un importante valor pesquero y gastronómico. Se captura artesanalmente co
 
 Estado del recurso:  
 En algunas zonas se considera sobreexplotado o en recuperación, especialmente en áreas con alta presión pesquera. Es importante aplicar regulaciones sobre tallas mínimas y vedas para su conservación.`,
-  imagen: "imagenes/Especies/robalo.png",
+  imagen: "imagenes/Especies/robalo.webp",
   pdf: "",
   expandido: false
 },
@@ -396,7 +396,7 @@ El pejerrey es una de las especies más emblemáticas para la pesca deportiva en
 
 Estado del recurso:  
 En algunas lagunas y ambientes cerrados, su población depende de la siembra o manejo artificial. En áreas costeras se mantiene estable, aunque la presión de pesca y la contaminación pueden afectar localmente a ciertas poblaciones.`,
-  imagen: "imagenes/Especies/pejerrey.png",
+  imagen: "imagenes/Especies/pejerrey.webp",
   pdf: "",
   expandido: false
 },
@@ -432,7 +432,7 @@ Es muy apreciado por su carne blanca, firme y sabrosa, de alta calidad culinaria
 Estado del recurso:  
 Ha mostrado signos de sobreexplotación en ciertas áreas, por lo cual se recomienda una gestión adecuada de su pesquería, incluyendo vedas, tallas mínimas y monitoreo de capturas.`,
 
-  imagen: "/imagenes/Especies/salmon.png",
+  imagen: "/imagenes/Especies/salmon.webp",
   pdf: "",
   expandido: false
 },
@@ -468,7 +468,7 @@ Tiene valor pesquero regional, principalmente como especie acompañante en la pe
 Otros datos:  
 Debido a su biología (crecimiento lento y madurez tardía), las especies del género Sebastes son susceptibles a la sobrepesca. Se recomienda un manejo precautorio para evitar impactos sobre la población.`,
 
-  imagen: "/imagenes/Especies/escrofalo.png",
+  imagen: "/imagenes/Especies/escrofalo.webp",
   pdf: "",
   expandido: false
 },
@@ -505,7 +505,7 @@ Tiene valor pesquero regional, principalmente como especie acompañante en la pe
 Otros datos:  
 Debido a su biología (crecimiento lento y madurez tardía), las especies del género Sebastes son susceptibles a la sobrepesca. Se recomienda un manejo precautorio para evitar impactos sobre la población.`,
 
-  imagen: "/imagenes/Especies/pezsapo.png",
+  imagen: "/imagenes/Especies/pezsapo.webp",
   pdf: "",
   expandido: false
 },
@@ -541,7 +541,7 @@ Tiene valor pesquero local y es explotado en pesquerías artesanales e industria
 
 Otros datos:  
 Debido a su tamaño y comportamiento, es un depredador clave en su ecosistema. Tiene gran capacidad de aprendizaje y adaptación, mostrando comportamientos complejos como el uso de herramientas o el camuflaje avanzado.`,
-  imagen: "/imagenes/Especies/pulporojo.png",
+  imagen: "/imagenes/Especies/pulporojo.webp",
   pdf: "",
   expandido: false
 }
