@@ -21,7 +21,7 @@
 
     <!-- Otros logotipos institucionales -->
      <a href="https://www.comodoro.gov.ar" target="_blank" rel="noopener noreferrer">
-        <img src="/imagenes/Logotipos/comodoro_municipalidad-blanco.png" alt="Gestión Othar" class="h-16" />
+        <img src="/imagenes/Logotipos/comodoro_municipalidad-blanco.svg" alt="Gestión Othar" class="h-16" />
       </a>
       <a href="https://www.comodoro.gov.ar" target="_blank" rel="noopener noreferrer" >
         <img src="/imagenes/Logotipos/Escudo-comodoro-Rivadavia.png" alt="Escudo CR" class="h-16" />
