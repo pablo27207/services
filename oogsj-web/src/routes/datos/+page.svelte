@@ -18,33 +18,50 @@
     { nombre: "Mareógrafo Puerto de Comodoro Rivadavia", lat: -45.8613,  lon: -67.4647,  info: "Mareógrafo en Comodoro Rivadavia para monitoreo del nivel del mar.", imagen: "/imagenes/mareografo.jpg" },
     { nombre: "Boya Comodoro II",                         lat: -45.876267, lon: -67.448823, info: "Boya oceanográfica que mide la temperatura y altura de olas.",        imagen: "/imagenes/boya.jpg" },
     { nombre: "Estacion Meteorologica Puerto Comodoro Rivadavia", lat: -45.8620,  lon: -67.4639, info: "Mareógrafo en Comodoro Rivadavia.", imagen: "/imagenes/Estacion-Metereologica-Puerto/EstacionMetereologica.jpg",
-      sensores: [{ nombre: "Sensor 1", tipo: "Nivel del mar", imagen: "/imagenes/Sensores/mareografo.jpg", descripcion: "Mide el nivel del mar en tiempo real." }]}
-    ,
+      sensores: [{ nombre: "Sensor 1", tipo: "Nivel del mar", imagen: "/imagenes/Sensores/mareografo.jpg", descripcion: "Mide el nivel del mar en tiempo real." }]
+    },
     { nombre: "Estacion Meteorologica Caleta Cordoba",    lat: -45.749312, lon: -67.368301, info: "Mareógrafo en Comodoro Rivadavia.", imagen: "/imagenes/Estacion-Metereologica-Puerto/EstacionMetereologica.jpg",
-      sensores: [{ nombre: "Sensor 1", tipo: "Nivel del mar", imagen: "/imagenes/Sensores/mareografo.jpg", descripcion: "Mide el nivel del mar en tiempo real." }]}
-    ,
+      sensores: [{ nombre: "Sensor 1", tipo: "Nivel del mar", imagen: "/imagenes/Sensores/mareografo.jpg", descripcion: "Mide el nivel del mar en tiempo real." }]
+    },
     { nombre: "Futura Plataforma",                         lat: -45.825157, lon: -67.463506, info: "Se prevé la instalación de una nueva plataforma en esta ubicación.", imagen: "/imagenes/FuturaPlataforma/futuraPlataformaLogo.jpg", sensores: [] }
   ];
 
   // --- clickOutside para cerrar modal ---
   function clickOutside(node) {
-    const handleClick = (event) => { if (!node.contains(event.target)) showModal = false; };
+    const handleClick = (event) => {
+      if (!node.contains(event.target)) showModal = false;
+    };
     document.addEventListener('mousedown', handleClick, true);
-    return { destroy() { document.removeEventListener('mousedown', handleClick, true); } };
+    return {
+      destroy() {
+        document.removeEventListener('mousedown', handleClick, true);
+      }
+    };
   }
 
-  function openModal(plataforma) { plataformaSeleccionada = plataforma; showModal = true; }
-  function closeModal() { showModal = false; }
+  function openModal(plataforma) {
+    plataformaSeleccionada = plataforma;
+    showModal = true;
+    // Nota: más adelante acá vamos a forzar resize/redraw de gráficos si hace falta.
+  }
+
+  function closeModal() {
+    showModal = false;
+  }
 
   function addMarkers() {
     if (!map) return;
 
     // limpiar marcadores previos
-    map.eachLayer(layer => { if (layer instanceof L.Marker) map.removeLayer(layer); });
+    map.eachLayer(layer => {
+      if (layer instanceof L.Marker) map.removeLayer(layer);
+    });
 
     plataformas.forEach(plataforma => {
       let emoji = "🟢";
-      if (plataforma.nombre.toLowerCase().includes("futura") || (plataforma.sensores?.length === 0)) emoji = "🔴";
+      if (plataforma.nombre.toLowerCase().includes("futura") || (plataforma.sensores?.length === 0)) {
+        emoji = "🔴";
+      }
 
       const customIcon = L.divIcon({
         className: 'emoji-marker',
@@ -58,6 +75,11 @@
       marker.on('click', () => openModal(plataforma));
     });
   }
+
+  // handler estable para add/remove
+  const handleResize = () => {
+    if (map) map.invalidateSize();
+  };
 
   onMount(() => {
     if (typeof window === 'undefined') return;
@@ -89,38 +111,44 @@
     ignLayer.addTo(map);
 
     addMarkers();
-    window.addEventListener('resize', addMarkers);
+    window.addEventListener('resize', handleResize);
   });
 
   onDestroy(() => {
-    window.removeEventListener('resize', addMarkers);
+    window.removeEventListener('resize', handleResize);
+    if (map) map.remove();
   });
 </script>
 
-<div class="container">
+<div class="map-wrapper">
   <div id="map" bind:this={mapElement}></div>
 
   <div class="modal-container {showModal ? '' : 'modal-hidden'}" use:clickOutside>
     {#if plataformaSeleccionada}
-      <div class="grid-container">
-        {#each plataformaSeleccionada.variables as variable}
-          <div class="chart-card" data-title={variable.icono + " " + variable.nombre}>
-            <div class="chart-container"></div>
+      <div class="modal-body">
+        <!-- Nota: este bloque de variables depende de que exista plataformaSeleccionada.variables -->
+        {#if plataformaSeleccionada.variables}
+          <div class="grid-container">
+            {#each plataformaSeleccionada.variables as variable}
+              <div class="chart-card" data-title={variable.icono + " " + variable.nombre}>
+                <div class="chart-container"></div>
+              </div>
+            {/each}
           </div>
-        {/each}
-      </div>
+        {/if}
 
-      {#if plataformaSeleccionada.nombre.toLowerCase().includes("mareógrafo")}
-        <GraficosMareografo />
-      {:else if plataformaSeleccionada.nombre.toLowerCase().includes("boya")}
-        <GraficosBoya />
-      {:else if plataformaSeleccionada.nombre.toLowerCase().includes("caleta")}
-        <EstacionCaleta />
-      {:else if plataformaSeleccionada.nombre.toLowerCase().includes("puerto")}
-        <EstacionPuerto />
-      {:else}
-        <PlataformaNoHabilitada />
-      {/if}
+        {#if plataformaSeleccionada.nombre.toLowerCase().includes("mareógrafo")}
+          <GraficosMareografo />
+        {:else if plataformaSeleccionada.nombre.toLowerCase().includes("boya")}
+          <GraficosBoya />
+        {:else if plataformaSeleccionada.nombre.toLowerCase().includes("caleta")}
+          <EstacionCaleta />
+        {:else if plataformaSeleccionada.nombre.toLowerCase().includes("puerto")}
+          <EstacionPuerto />
+        {:else}
+          <PlataformaNoHabilitada />
+        {/if}
+      </div>
 
       <div class="modal-footer">
         <button on:click={closeModal}>❌</button>
@@ -130,26 +158,95 @@
 </div>
 
 <style>
-  .modal-footer {
+  /* ===== MAPA FULL WIDTH/HEIGHT ===== */
+  .map-wrapper {
+    position: relative;
+    width: 100vw;
+    max-width: none;
+    height: calc(100vh - 70px);
+    margin: 0;
+    z-index: 0;
+  }
+
+  #map {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    z-index: 0;
+  }
+
+  /* ===== MODAL RESPONSIVO ===== */
+  .modal-container {
     position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+
+    background: white;
+    color: black;
+    padding: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,.3);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    border-radius: 12px;
+
+    z-index: 999;
+
+    width: min(92vw, 1200px);
+    height: min(85dvh, 700px);
+    max-height: 85dvh;
+    overflow: hidden;
+  }
+
+  .modal-hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .modal-body {
+    overflow: auto;
+    min-height: 0;
+    flex: 1;
+  }
+
+  /* Botón cerrar: arriba, accesible */
+  .modal-footer {
+    position: absolute;
     top: 10px;
     right: 10px;
-    display: flex;
-    gap: 10px;
-    background: white;
-    padding: 5px;
-    z-index: 20;
+    z-index: 1000;
+    background: transparent;
+    padding: 0;
   }
-  .container { position: relative; width: 100%; height: calc(100vh - 70px); margin-top: 6%; z-index: 0; }
-  #map { width: 100%; height: 100%; z-index: 0; margin-left: 3%; }
-  .modal-container {
-    position: absolute; top: 2%; left: 50%; transform: translate(-50%, 0);
-    background: white; color: black; padding: 15px; box-shadow: 0 4px 10px rgba(0,0,0,.3);
-    display: flex; flex-direction: column; align-items: center; border-radius: 8px; z-index: 15;
-    width: 90vw; height: 90%; max-width: 1200px; max-height: 600px; min-width: 700; overflow-y: auto;
+
+  .modal-footer button {
+    width: auto;
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,.2);
   }
-  .modal-hidden { opacity: 0; pointer-events: none; }
-  button { background: #fff; border: none; padding: 10px; cursor: pointer; border-radius: 10px; width: 80%; text-align: center; margin-left: 20px; }
-  button:hover { background: #a39997; }
-  @media (max-width: 600px) { .modal-container { width: 90%; top: 5%; } }
+
+  .modal-footer button:hover {
+    background: #a39997;
+  }
+
+  @media (max-width: 700px) {
+    .modal-container {
+      width: 94vw;
+      height: 88dvh;
+      border-radius: 14px;
+      padding: 10px;
+    }
+  }
+  :global(html, body) {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
 </style>
