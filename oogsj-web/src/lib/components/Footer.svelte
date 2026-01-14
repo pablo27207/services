@@ -21,11 +21,11 @@
 
     <!-- Otros logotipos institucionales -->
      <a href="https://www.comodoro.gov.ar" target="_blank" rel="noopener noreferrer">
-        <img src="/imagenes/Logotipos/comodoro_municipalidad-blanco.svg" alt="Gestión Othar" class="h-16" />
+        <img src="/imagenes/Logotipos/NuevoConocimientoLogo.png" alt="Gestión Othar" class="h-16" />
       </a>
-      <a href="https://www.comodoro.gov.ar" target="_blank" rel="noopener noreferrer" >
+      <!--<a href="https://www.comodoro.gov.ar" target="_blank" rel="noopener noreferrer" >
         <img src="/imagenes/Logotipos/Escudo-comodoro-Rivadavia.png" alt="Escudo CR" class="h-16" />
-      </a>
+      </a>-->
       <a href="https://www.conicet.gov.ar" target="_blank" rel="noopener noreferrer">
         <img src="/imagenes/Logotipos/logo-conicet-blanco.png" alt="CONICET" class="h-16" />
       </a>
