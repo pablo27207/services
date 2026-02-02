@@ -22,8 +22,7 @@
     },
     { nombre: "Estacion Meteorologica Caleta Cordoba",    lat: -45.749312, lon: -67.368301, info: "Mareógrafo en Comodoro Rivadavia.", imagen: "/imagenes/Estacion-Metereologica-Puerto/EstacionMetereologica.jpg",
       sensores: [{ nombre: "Sensor 1", tipo: "Nivel del mar", imagen: "/imagenes/Sensores/mareografo.jpg", descripcion: "Mide el nivel del mar en tiempo real." }]
-    },
-    { nombre: "Futura Plataforma",                         lat: -45.825157, lon: -67.463506, info: "Se prevé la instalación de una nueva plataforma en esta ubicación.", imagen: "/imagenes/FuturaPlataforma/futuraPlataformaLogo.jpg", sensores: [] }
+    }
   ];
 
   // --- clickOutside para cerrar modal ---
@@ -64,11 +63,12 @@
       }
 
       const customIcon = L.divIcon({
-        className: 'emoji-marker',
-        html: `<span style="font-size: 10px;">${emoji}</span>`,
-        iconSize: [15, 15],
-        iconAnchor: [8, 8]
-      });
+  className: 'emoji-marker',
+  html: `<span style="font-size: 22px; line-height: 22px;">${emoji}</span>`,
+  iconSize: [22, 22],
+  iconAnchor: [11, 11]
+});
+
 
       const marker = L.marker([plataforma.lat, plataforma.lon], { icon: customIcon }).addTo(map);
       marker.bindTooltip(plataforma.nombre, { permanent: false, direction: "top" });
