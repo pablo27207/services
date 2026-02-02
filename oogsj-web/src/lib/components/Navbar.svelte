@@ -46,15 +46,15 @@
       </ul>
     </div>
   </div>
-  <img src="/imagenes/Logotipos/NuevoConocimientoLogo.webp" alt="Logo Observatorio" class="h-16" />
-  <img src="/imagenes/Logotipos/logo-puerto-bien.webp" alt="Logo Observatorio" class="h-16" />
- 
+  
   <div class="navbar-center">
     <a class="btn btn-ghost text-xl">OBSERVATORIO OCEANOGRÁFICO GOLFO SAN JORGE</a>
   </div>
-
+<img src="/imagenes/Logotipos/NuevoConocimientoLogo.webp" alt="Logo Observatorio" class="h-16" />
+  <img src="/imagenes/Logotipos/logo-puerto-bien.webp" alt="Logo Observatorio" class="h-16" />
+ 
   <img src="/imagenes/Logotipos/logoiidepis.webp" alt="Logo Observatorio" class="h-16" />
-  <img src="/imagenes/Iconos/boya-logo-white.webp" alt="Logo Observatorio" class="h-16" />
+ <!--<img src="/imagenes/Iconos/boya-logo-white.webp" alt="Logo Observatorio" class="h-16" /> --> 
    
   
 
