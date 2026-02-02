@@ -48,33 +48,37 @@
     showModal = false;
   }
 
-  function addMarkers() {
-    if (!map) return;
+function addMarkers() {
+  if (!map) return;
 
-    // limpiar marcadores previos
-    map.eachLayer(layer => {
-      if (layer instanceof L.Marker) map.removeLayer(layer);
+  // limpiar marcadores previos
+  map.eachLayer(layer => {
+    if (layer instanceof L.Marker) map.removeLayer(layer);
+  });
+
+  plataformas.forEach(plataforma => {
+    let emoji = "📡";
+    const nombre = plataforma.nombre.toLowerCase();
+
+    if (nombre.includes("boya")) emoji = "🛟";
+    else if (nombre.includes("mareógrafo") || nombre.includes("mareografo")) emoji = "🌊";
+    else if (nombre.includes("estacion")) emoji = "📡";
+
+    const customIcon = L.divIcon({
+      className: 'emoji-marker',
+      html: `<span style="font-size: 26px; line-height: 26px;">${emoji}</span>`,
+      iconSize: [26, 26],
+      iconAnchor: [13, 13]
     });
 
-    plataformas.forEach(plataforma => {
-      let emoji = "🟢";
-      if (plataforma.nombre.toLowerCase().includes("futura") || (plataforma.sensores?.length === 0)) {
-        emoji = "🔴";
-      }
-
-      const customIcon = L.divIcon({
-  className: 'emoji-marker',
-  html: `<span style="font-size: 22px; line-height: 22px;">${emoji}</span>`,
-  iconSize: [22, 22],
-  iconAnchor: [11, 11]
-});
+    const marker = L.marker([plataforma.lat, plataforma.lon], { icon: customIcon }).addTo(map);
+    marker.bindTooltip(plataforma.nombre, { permanent: false, direction: "top" });
+    marker.on('click', () => openModal(plataforma));
+  });
+}
 
 
-      const marker = L.marker([plataforma.lat, plataforma.lon], { icon: customIcon }).addTo(map);
-      marker.bindTooltip(plataforma.nombre, { permanent: false, direction: "top" });
-      marker.on('click', () => openModal(plataforma));
-    });
-  }
+
 
   // handler estable para add/remove
   const handleResize = () => {
