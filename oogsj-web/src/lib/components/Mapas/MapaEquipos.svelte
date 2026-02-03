@@ -74,10 +74,55 @@
     plataformaSeleccionada.set(ubicacion);
   }
 
+  // 1) Solo “activas” (según tu pedido: boya + estaciones + mareógrafo; sin futuras y con sensores)
+  function esPlataformaActiva(u: any) {
+    const nombre = (u?.nombre ?? '').toLowerCase();
+    const esTipoValido =
+      nombre.includes('boya') ||
+      nombre.includes('estacion') ||
+      nombre.includes('estación') ||
+      nombre.includes('mareografo') ||
+      nombre.includes('mareógrafo');
+
+    const noEsFutura = !nombre.includes('futura');
+    const tieneSensores = Array.isArray(u?.sensores) && u.sensores.length > 0;
+
+    return esTipoValido && noEsFutura && tieneSensores;
+  }
+
+  // 2) Ícono por tipo (misma idea que “datos”: iconos de /static/icons => se usan como /icons/...)
+  function getIconUrl(u: any): string {
+    const nombre = (u?.nombre ?? '').toLowerCase();
+
+    if (nombre.includes('boya')) return '/icons/boya.png';
+    if (nombre.includes('mareografo') || nombre.includes('mareógrafo')) return '/icons/mareografo.png';
+    if (nombre.includes('estacion') || nombre.includes('estación')) return '/icons/estacion.png';
+
+    // Fallback por si entra algo raro
+    return '/icons/plataformas.png';
+  }
+
+  function buildIcon(iconUrl: string) {
+    // Ajustá tamaños si querés más grandes
+    return L.icon({
+      iconUrl,
+      iconSize: [34, 34],
+      iconAnchor: [17, 34],
+      tooltipAnchor: [0, -28]
+    });
+  }
+
   onMount(() => {
     if (typeof window === 'undefined') return;
 
-    map = L.map(mapElement).setView([ubicaciones[0].lat, ubicaciones[0].lon], 14);
+    const activas = ubicaciones.filter(esPlataformaActiva);
+
+    // Si por algún motivo no hay activas, evitamos romper y centramos en Comodoro aprox.
+    const center = activas.length
+      ? [activas[0].lat, activas[0].lon]
+      : [-45.86, -67.48];
+
+    map = L.map(mapElement).setView(center as any, 13);
 
     // === IGN por TMS (evita el "Bloqueado WMS") ===
     const ignLayer = L.tileLayer(
@@ -102,21 +147,15 @@
 
     ignLayer.addTo(map);
 
-    // Marcadores + tooltips + selección
-    selectPlataforma(ubicaciones[0]);
+    // Selección inicial: primera activa (si existe)
+    if (activas.length) selectPlataforma(activas[0]);
 
-    ubicaciones.forEach(ubicacion => {
-      let emoji = "🟢";
-      if (ubicacion.nombre.includes("Futura") || ubicacion.sensores.length === 0) emoji = "🔴";
+    // Marcadores + tooltips + selección (solo activas)
+    activas.forEach((ubicacion) => {
+      const iconUrl = getIconUrl(ubicacion);
+      const icon = buildIcon(iconUrl);
 
-      const customIcon = L.divIcon({
-        className: 'emoji-marker',
-        html: `<span style="font-size: 10px;">${emoji}</span>`,
-        iconSize: [15, 15],
-        iconAnchor: [8, 18]
-      });
-
-      const marker = L.marker([ubicacion.lat, ubicacion.lon], { icon: customIcon }).addTo(map);
+      const marker = L.marker([ubicacion.lat, ubicacion.lon], { icon }).addTo(map);
       marker.bindTooltip(ubicacion.nombre, { permanent: false, direction: "top" });
       marker.on('click', () => selectPlataforma(ubicacion));
     });
@@ -131,19 +170,3 @@
     height: 500px;
   }
 </style>
-
-
-<!--{
-  nombre: "Comodoro II",
-  lat: -45.876267,
-  lon: -67.448823,
-  info: "Una boya oceanográfica es un dispositivo flotante que se instala en el mar para recopilar datos importantes sobre el ambiente marino. Aunque a simple vista parezca solo un objeto flotando, en realidad está equipada con sensores que miden cosas como la velocidad del viento, la altura de las olas, la dirección del agua y otros parámetros que ayudan a entender mejor el océano.",
-  imagen: "/imagenes/boya-foto-perfil.jpg",
-  sensores: [
-    { nombre: "Sensor 1", tipo: "Anemómetro", imagen: "/imagenes/Sensores/anemometro-foto.jpg", descripcion: "Mide la velocidad y dirección del viento." },
-    { nombre: "Sensor 2", tipo: "Oligrafo", imagen: "/imagenes/Sensores/oligrafo.jpg", descripcion: "Registra datos ambientales como temperatura y presión atmosférica." },
-    { nombre: "Sensor 3", tipo: "PAR", imagen: "/imagenes/Sensores/PAR.jpg", descripcion: "Mide la radiación fotosintéticamente activa." },
-    { nombre: "Alimentación", tipo: "Paneles Solares", imagen: "/imagenes/Sensores/panelesSolares.png", descripcion: "Usa paneles solares de 12V 30W para generar energía." }
-  ]
-}-->
-
