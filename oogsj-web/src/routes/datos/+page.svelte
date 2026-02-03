@@ -25,6 +25,23 @@
     }
   ];
 
+  const ICONS = {
+  boya: "/icons/boya.png",
+  estacion: "/icons/estacion.png",
+  mareografo: "/icons/mareografo.png"
+};
+
+function getPlatformType(plataforma) {
+  const n = plataforma.nombre.toLowerCase();
+
+  if (n.includes("boya")) return "boya";
+  if (n.includes("mareógrafo") || n.includes("mareografo")) return "mareografo";
+  if (n.includes("estacion")) return "estacion";
+
+  return "estacion";
+}
+
+
   // --- clickOutside para cerrar modal ---
   function clickOutside(node) {
     const handleClick = (event) => {
@@ -57,18 +74,17 @@ function addMarkers() {
   });
 
   plataformas.forEach(plataforma => {
-    let emoji = "📡";
-    const nombre = plataforma.nombre.toLowerCase();
+    const type = getPlatformType(plataforma);
+    const iconUrl = ICONS[type] ?? ICONS.estacion;
 
-    if (nombre.includes("boya")) emoji = "🛟";
-    else if (nombre.includes("mareógrafo") || nombre.includes("mareografo")) emoji = "🌊";
-    else if (nombre.includes("estacion")) emoji = "📡";
+    // Tamaño del icono (ajustalo a gusto)
+    const size = 44;
 
-    const customIcon = L.divIcon({
-      className: 'emoji-marker',
-      html: `<span style="font-size: 26px; line-height: 26px;">${emoji}</span>`,
-      iconSize: [26, 26],
-      iconAnchor: [13, 13]
+    const customIcon = L.icon({
+      iconUrl,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],   // click centrado
+      tooltipAnchor: [0, -size / 2]
     });
 
     const marker = L.marker([plataforma.lat, plataforma.lon], { icon: customIcon }).addTo(map);
@@ -76,8 +92,6 @@ function addMarkers() {
     marker.on('click', () => openModal(plataforma));
   });
 }
-
-
 
 
   // handler estable para add/remove
