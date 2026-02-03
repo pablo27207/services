@@ -22,9 +22,25 @@
     },
     { nombre: "Estacion Meteorologica Caleta Cordoba",    lat: -45.749312, lon: -67.368301, info: "Mareógrafo en Comodoro Rivadavia.", imagen: "/imagenes/Estacion-Metereologica-Puerto/EstacionMetereologica.jpg",
       sensores: [{ nombre: "Sensor 1", tipo: "Nivel del mar", imagen: "/imagenes/Sensores/mareografo.jpg", descripcion: "Mide el nivel del mar en tiempo real." }]
-    },
-    { nombre: "Futura Plataforma",                         lat: -45.825157, lon: -67.463506, info: "Se prevé la instalación de una nueva plataforma en esta ubicación.", imagen: "/imagenes/FuturaPlataforma/futuraPlataformaLogo.jpg", sensores: [] }
+    }
   ];
+
+  const ICONS = {
+  boya: "/icons/boya.png",
+  estacion: "/icons/estacion.png",
+  mareografo: "/icons/mareografo.png"
+};
+
+function getPlatformType(plataforma) {
+  const n = plataforma.nombre.toLowerCase();
+
+  if (n.includes("boya")) return "boya";
+  if (n.includes("mareógrafo") || n.includes("mareografo")) return "mareografo";
+  if (n.includes("estacion")) return "estacion";
+
+  return "estacion";
+}
+
 
   // --- clickOutside para cerrar modal ---
   function clickOutside(node) {
@@ -49,32 +65,34 @@
     showModal = false;
   }
 
-  function addMarkers() {
-    if (!map) return;
+function addMarkers() {
+  if (!map) return;
 
-    // limpiar marcadores previos
-    map.eachLayer(layer => {
-      if (layer instanceof L.Marker) map.removeLayer(layer);
+  // limpiar marcadores previos
+  map.eachLayer(layer => {
+    if (layer instanceof L.Marker) map.removeLayer(layer);
+  });
+
+  plataformas.forEach(plataforma => {
+    const type = getPlatformType(plataforma);
+    const iconUrl = ICONS[type] ?? ICONS.estacion;
+
+    // Tamaño del icono (ajustalo a gusto)
+    const size = 44;
+
+    const customIcon = L.icon({
+      iconUrl,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],   // click centrado
+      tooltipAnchor: [0, -size / 2]
     });
 
-    plataformas.forEach(plataforma => {
-      let emoji = "🟢";
-      if (plataforma.nombre.toLowerCase().includes("futura") || (plataforma.sensores?.length === 0)) {
-        emoji = "🔴";
-      }
+    const marker = L.marker([plataforma.lat, plataforma.lon], { icon: customIcon }).addTo(map);
+    marker.bindTooltip(plataforma.nombre, { permanent: false, direction: "top" });
+    marker.on('click', () => openModal(plataforma));
+  });
+}
 
-      const customIcon = L.divIcon({
-        className: 'emoji-marker',
-        html: `<span style="font-size: 10px;">${emoji}</span>`,
-        iconSize: [15, 15],
-        iconAnchor: [8, 8]
-      });
-
-      const marker = L.marker([plataforma.lat, plataforma.lon], { icon: customIcon }).addTo(map);
-      marker.bindTooltip(plataforma.nombre, { permanent: false, direction: "top" });
-      marker.on('click', () => openModal(plataforma));
-    });
-  }
 
   // handler estable para add/remove
   const handleResize = () => {
