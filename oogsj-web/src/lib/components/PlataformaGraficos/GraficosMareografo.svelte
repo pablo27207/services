@@ -14,8 +14,9 @@
 <PanelVariables
   endpoint="/api/mareograph/latest"
   titulo={mareografo.nombre}
+  ordenVariables={["Valeport TideMaster"]}
   iconosVariables={{
-    "Valeport TideMaster": "🌊"
+    "Valeport TideMaster": "/iconosPaginaDatos/AlturaDeOlas.jpeg"
   }}
 />
 
