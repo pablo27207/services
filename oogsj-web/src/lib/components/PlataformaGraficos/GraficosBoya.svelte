@@ -13,20 +13,19 @@
 
 <PanelVariables
   endpoint="/api/buoy/latest"
-  titulo={Boya.nombre}
+  titulo={"CAMBIOS TEST 900"}
   ordenVariables={[
     "Sensor de Altura de Olas - CIDMAR-2",
     "Sensor de Dirección de Olas - CIDMAR-2",
     "Sensor de Periodo de Olas - CIDMAR-2",
     "Sensor de Dirección de la Corriente - CIDMAR-2",
-    "Sensor de Velocidad de Corriente - CIDMAR-2",
     "Sensor de Radiación PAR - CIDMAR-2",
     "Sensor de Batería - CIDMAR-2"
   ]}
   iconosVariables={{
-    "Sensor de Altura de Olas - CIDMAR-2": "/iconosPaginaDatos/AlturaDeOlas.png",
-    "Sensor de Dirección de Olas - CIDMAR-2": "/iconosPaginaDatos/DireccionDeOlas.png",
-    "Sensor de Periodo de Olas - CIDMAR-2": "/iconosPaginaDatos/PeriodoDeOla.png",
+    "Sensor de Altura de Olas - CIDMAR-2": "/iconosPaginaDatos/AlturaDeOlas.jpeg",
+    "Sensor de Dirección de Olas - CIDMAR-2": "/iconosPaginaDatos/DireccionDeOlas_v2.png",
+    "Sensor de Periodo de Olas - CIDMAR-2": "/iconosPaginaDatos/PeriodoDeOla_v2.png",
     "Sensor de Dirección de la Corriente - CIDMAR-2": "/iconosPaginaDatos/DireccionDeCorriente.png",
     "Sensor de Velocidad de Corriente - CIDMAR-2": "/iconosPaginaDatos/VelocidadDeCorriente.png",
     "Sensor de Radiación PAR - CIDMAR-2": "/iconosPaginaDatos/RadiacionPar.png",
