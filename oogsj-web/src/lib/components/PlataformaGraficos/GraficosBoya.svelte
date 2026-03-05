@@ -13,7 +13,7 @@
 
 <PanelVariables
   endpoint="/api/buoy/latest"
-  titulo={"CAMBIOS TEST 900"}
+  titulo={"Comodoro II"}
   ordenVariables={[
     "Sensor de Altura de Olas - CIDMAR-2",
     "Sensor de Dirección de Olas - CIDMAR-2",
