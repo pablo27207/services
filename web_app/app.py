@@ -466,10 +466,14 @@ def get_puerto_history():
 #--------------------------endpoint estacion meteorologica caleta cordova ultimos datos ----------------------------------------------------
 ### ESTE ES EL CORRECTO, LUEGO VER QUE METODOS SOBRAN Y COMENTARLO
 
+from flask import jsonify
+from datetime import timezone
+
 @app.route("/api/appcr/muelle_cc", methods=["GET"])
 def get_muelle_cc_data():
     """
-    Obtiene el último registro de cada sensor de la estación "APPCR Muelle CC".
+    Obtiene el último registro de cada sensor de la estación APPCR Muelle CC
+    y lo normaliza a un formato internacional consumible.
     """
     conn = get_db_connection()
     if conn is None:
@@ -504,19 +508,162 @@ def get_muelle_cc_data():
 
         rows = cur.fetchall()
 
-        data = [
-            {
-                "sensor_id": r[0],
-                "sensor": r[1],
-                "variable": r[2],
-                "unit": r[3],
-                "timestamp": r[4].isoformat() if r[4] else None,
-                "value": float(r[5]) if r[5] is not None else None
+        # Diccionario de normalización por variable
+        # source_unit = unidad esperada del dato crudo
+        # target_unit = unidad final internacional
+        VARIABLE_MAP = {
+            "Bar": {
+                "key": "barometric_pressure",
+                "label": "Presión barométrica",
+                "source_unit": "hPa",
+                "target_unit": "hPa"
+            },
+            "Dew Point Out": {
+                "key": "dew_point_outdoor",
+                "label": "Punto de rocío exterior",
+                "source_unit": "°F",
+                "target_unit": "°C"
+            },
+            "Heat Index Out": {
+                "key": "heat_index_outdoor",
+                "label": "Índice de calor exterior",
+                "source_unit": "°F",
+                "target_unit": "°C"
+            },
+            "Rainfall Clicks": {
+                "key": "rainfall",
+                "label": "Precipitación",
+                "source_unit": "clicks",
+                "target_unit": "mm"
+            },
+            "Temp In": {
+                "key": "indoor_temperature",
+                "label": "Temperatura interior",
+                "source_unit": "°F",
+                "target_unit": "°C"
+            },
+            "Temp Out": {
+                "key": "outdoor_temperature",
+                "label": "Temperatura exterior",
+                "source_unit": "°F",
+                "target_unit": "°C"
+            },
+            "Wind Chill": {
+                "key": "wind_chill",
+                "label": "Sensación térmica por viento",
+                "source_unit": "°F",
+                "target_unit": "°C"
+            },
+            "Wind Dir Of Prevail": {
+                "key": "wind_direction",
+                "label": "Dirección predominante del viento",
+                "source_unit": "degrees",
+                "target_unit": "degrees"
+            },
+            "Wind Speed Avg": {
+                "key": "wind_speed_avg",
+                "label": "Velocidad media del viento",
+                "source_unit": "mph",
+                "target_unit": "m/s"
             }
-            for r in rows
-        ]
+        }
 
-        return jsonify(data)
+        def fahrenheit_to_celsius(value):
+            return (value - 32) * 5.0 / 9.0
+
+        def mph_to_ms(value):
+            return value * 0.44704
+
+        def identity(value):
+            return value
+
+        def clicks_to_mm(value):
+            # AJUSTAR según la estación/sensor real de WeatherLink
+            # Esto es un placeholder razonable solo si sabés cuántos mm vale cada click.
+            MM_PER_CLICK = 0.2
+            return value * MM_PER_CLICK
+
+        def convert_value(variable_name, raw_value):
+            if raw_value is None:
+                return None, None
+
+            config = VARIABLE_MAP.get(variable_name)
+            if not config:
+                return raw_value, None
+
+            source_unit = config["source_unit"]
+            target_unit = config["target_unit"]
+
+            if source_unit == target_unit:
+                return round(identity(raw_value), 2), target_unit
+
+            if source_unit == "°F" and target_unit == "°C":
+                return round(fahrenheit_to_celsius(raw_value), 2), target_unit
+
+            if source_unit == "mph" and target_unit == "m/s":
+                return round(mph_to_ms(raw_value), 2), target_unit
+
+            if source_unit == "clicks" and target_unit == "mm":
+                return round(clicks_to_mm(raw_value), 2), target_unit
+
+            if source_unit == "degrees" and target_unit == "degrees":
+                return round(raw_value, 2), "°"
+
+            return round(raw_value, 2), target_unit
+
+        def normalize_timestamp(ts):
+            if ts is None:
+                return None
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            return ts.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+        variables = {}
+        latest_timestamp = None
+
+        for r in rows:
+            sensor_id = r[0]
+            sensor_name = r[1]
+            variable_name = r[2]
+            db_unit = r[3]
+            ts = r[4]
+            raw_value = float(r[5]) if r[5] is not None else None
+
+            config = VARIABLE_MAP.get(variable_name)
+
+            # Si no está mapeada, la dejamos en formato fallback
+            if config:
+                converted_value, final_unit = convert_value(variable_name, raw_value)
+                key = config["key"]
+                label = config["label"]
+            else:
+                converted_value = round(raw_value, 2) if raw_value is not None else None
+                final_unit = db_unit
+                key = variable_name.lower().replace(" ", "_")
+                label = variable_name
+
+            iso_ts = normalize_timestamp(ts)
+
+            if latest_timestamp is None and iso_ts is not None:
+                latest_timestamp = iso_ts
+
+            variables[key] = {
+                "label": label,
+                "sensor": sensor_name,
+                "sensor_id": sensor_id,
+                "value": converted_value,
+                "unit": final_unit,
+                "timestamp": iso_ts
+            }
+
+        response = {
+            "station_name": "APPCR Muelle CC",
+            "station_code": "appcr_muelle_cc",
+            "timestamp": latest_timestamp,
+            "variables": variables
+        }
+
+        return jsonify(response), 200
 
     except Exception as e:
         print(f"❌ ERROR en /api/appcr/muelle_cc: {e}")
