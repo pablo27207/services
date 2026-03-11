@@ -330,6 +330,9 @@ def get_latest_mareograph_data():
     return jsonify(data)
 
 #---------------------------Estacion Meteoroloigca Comodoro Rivadavia Puerto --------------------------------------------------------------
+from flask import jsonify
+from datetime import timezone
+
 @app.route("/api/appcr/puerto", methods=["GET"])
 def get_puerto_data():
     conn = get_db_connection()
@@ -340,20 +343,18 @@ def get_puerto_data():
     try:
         cur = conn.cursor()
 
-        # Trae el último dato por sensor SOLO de la plataforma indicada.
-        # Usamos INNER JOIN LATERAL (JOIN ... ON TRUE) para excluir sensores sin mediciones.
         cur.execute("""
             SELECT
-                s.id   AS sensor_id,
+                s.id AS sensor_id,
                 s.name AS sensor,
                 v.name AS variable,
                 u.symbol AS unit,
                 m."timestamp" AS ts,
                 m.value AS val
             FROM oogsj_data.platform p
-            JOIN oogsj_data.sensor   s ON s.platform_id = p.id
+            JOIN oogsj_data.sensor s ON s.platform_id = p.id
             JOIN oogsj_data.variable v ON v.id = s.variable_id
-            JOIN oogsj_data.unit     u ON u.id = s.unit_id
+            JOIN oogsj_data.unit u ON u.id = s.unit_id
             JOIN LATERAL (
                 SELECT m2."timestamp", m2.value
                 FROM oogsj_data.measurement m2
@@ -367,19 +368,136 @@ def get_puerto_data():
 
         rows = cur.fetchall()
 
-        data = [
-            {
-                "sensor_id": r[0],
-                "sensor": r[1],
-                "variable": r[2],
-                "unit": r[3],
-                "timestamp": r[4].isoformat() if r[4] else None,
-                "value": float(r[5]) if r[5] is not None else None,
-            }
-            for r in rows
-        ]
+        if not rows:
+            return jsonify({
+                "station_code": "appcr_puerto_cr",
+                "station_name": "APPCR Puerto CR",
+                "timestamp": None,
+                "variables": {}
+            }), 200
 
-        return jsonify(data)
+        def timestamp_to_iso_z(ts):
+            if ts is None:
+                return None
+
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+
+            return ts.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+        def normalizar_clave(variable_name, sensor_name):
+            variable_name = (variable_name or "").strip().lower()
+            sensor_name = (sensor_name or "").strip().lower()
+
+            texto = f"{variable_name} {sensor_name}"
+
+            if "bar" in texto and "bar_trend" not in texto:
+                return "barometric_pressure"
+            elif "dew_point_out" in texto or "dew point out" in texto:
+                return "dew_point_outdoor"
+            elif "heat_index_out" in texto or "heat index out" in texto:
+                return "heat_index_outdoor"
+            elif "temp_in" in texto or "indoor" in texto:
+                return "indoor_temperature"
+            elif "temp_out" in texto or "outdoor temperature" in texto:
+                return "outdoor_temperature"
+            elif "rainfall" in texto or "rain" in texto:
+                return "rainfall"
+            elif "wind_chill" in texto:
+                return "wind_chill"
+            elif "wind_dir_of_prevail" in texto or "wind direction" in texto or "wind_dir" in texto:
+                return "wind_direction"
+            elif "wind_speed_avg" in texto or "wind speed avg" in texto:
+                return "wind_speed_avg"
+            elif "wind_speed" in texto or "wind speed" in texto:
+                return "wind_speed"
+            elif "hum_out" in texto or "humidity out" in texto or "humedad exterior" in texto:
+                return "outdoor_humidity"
+
+            clave = sensor_name or variable_name or "unknown_variable"
+            clave = clave.replace(" ", "_").replace("-", "_").replace("/", "_")
+            while "__" in clave:
+                clave = clave.replace("__", "_")
+            return clave.strip("_")
+
+        def generar_label(clave, variable_name):
+            labels = {
+                "barometric_pressure": "Presión barométrica",
+                "dew_point_outdoor": "Punto de rocío exterior",
+                "heat_index_outdoor": "Índice de calor exterior",
+                "indoor_temperature": "Temperatura interior",
+                "outdoor_temperature": "Temperatura exterior",
+                "rainfall": "Precipitación",
+                "wind_chill": "Sensación térmica por viento",
+                "wind_direction": "Dirección predominante del viento",
+                "wind_speed_avg": "Velocidad media del viento",
+                "wind_speed": "Velocidad del viento",
+                "outdoor_humidity": "Humedad exterior",
+            }
+
+            return labels.get(
+                clave,
+                variable_name if variable_name else clave.replace("_", " ").capitalize()
+            )
+
+        def normalizar_unidad_y_valor(clave, unit, val):
+            if val is None:
+                return unit, None
+
+            try:
+                valor = float(val)
+            except (TypeError, ValueError):
+                return unit, None
+
+            unit_limpia = (unit or "").strip().lower()
+
+            # Convertimos tanto velocidad media como velocidad simple
+            if clave in ["wind_speed_avg", "wind_speed"]:
+                if unit_limpia in ["m/s", "mps", "meter/second", "meters/second"]:
+                    return "km/h", round(valor * 3.6, 2)
+
+                if unit_limpia in ["km/h", "kmh"]:
+                    return "km/h", round(valor, 2)
+
+                return unit, round(valor, 2)
+
+            return unit, round(valor, 2)
+
+        variables = {}
+        latest_timestamp = None
+
+        for r in rows:
+            sensor_id = r[0]
+            sensor = r[1]
+            variable_name = r[2]
+            unit = r[3]
+            ts = r[4]
+            val = r[5]
+
+            clave = normalizar_clave(variable_name, sensor)
+            label = generar_label(clave, variable_name)
+            unit_normalizada, value_normalizado = normalizar_unidad_y_valor(clave, unit, val)
+
+            variables[clave] = {
+                "label": label,
+                "sensor": sensor,
+                "sensor_id": sensor_id,
+                "timestamp": timestamp_to_iso_z(ts),
+                "unit": unit_normalizada,
+                "value": value_normalizado
+            }
+
+            if ts is not None and (latest_timestamp is None or ts > latest_timestamp):
+                latest_timestamp = ts
+
+        response = {
+            "station_code": "appcr_puerto_cr",
+            "station_name": "APPCR Puerto CR",
+            "timestamp": timestamp_to_iso_z(latest_timestamp),
+            "variables": variables
+        }
+
+        return jsonify(response), 200
 
     except Exception as e:
         print(f"❌ ERROR en /api/appcr/puerto: {e}")
@@ -473,7 +591,7 @@ from datetime import timezone
 def get_muelle_cc_data():
     """
     Obtiene el último registro de cada sensor de la estación APPCR Muelle CC
-    y lo normaliza a un formato internacional consumible.
+    y lo normaliza a un formato consumible por el frontend.
     """
     conn = get_db_connection()
     if conn is None:
@@ -508,9 +626,14 @@ def get_muelle_cc_data():
 
         rows = cur.fetchall()
 
-        # Diccionario de normalización por variable
-        # source_unit = unidad esperada del dato crudo
-        # target_unit = unidad final internacional
+        if not rows:
+            return jsonify({
+                "station_name": "APPCR Muelle CC",
+                "station_code": "appcr_muelle_cc",
+                "timestamp": None,
+                "variables": {}
+            }), 200
+
         VARIABLE_MAP = {
             "Bar": {
                 "key": "barometric_pressure",
@@ -564,22 +687,21 @@ def get_muelle_cc_data():
                 "key": "wind_speed_avg",
                 "label": "Velocidad media del viento",
                 "source_unit": "mph",
-                "target_unit": "m/s"
+                "target_unit": "km/h"
             }
         }
 
         def fahrenheit_to_celsius(value):
             return (value - 32) * 5.0 / 9.0
 
-        def mph_to_ms(value):
-            return value * 0.44704
+        def mph_to_kmh(value):
+            return value * 1.60934
 
         def identity(value):
             return value
 
         def clicks_to_mm(value):
-            # AJUSTAR según la estación/sensor real de WeatherLink
-            # Esto es un placeholder razonable solo si sabés cuántos mm vale cada click.
+            # Ajustar si el sensor real usa otra equivalencia
             MM_PER_CLICK = 0.2
             return value * MM_PER_CLICK
 
@@ -589,25 +711,24 @@ def get_muelle_cc_data():
 
             config = VARIABLE_MAP.get(variable_name)
             if not config:
-                return raw_value, None
+                return round(raw_value, 2), None
 
             source_unit = config["source_unit"]
             target_unit = config["target_unit"]
 
             if source_unit == target_unit:
+                if source_unit == "degrees":
+                    return round(identity(raw_value), 2), "°"
                 return round(identity(raw_value), 2), target_unit
 
             if source_unit == "°F" and target_unit == "°C":
                 return round(fahrenheit_to_celsius(raw_value), 2), target_unit
 
-            if source_unit == "mph" and target_unit == "m/s":
-                return round(mph_to_ms(raw_value), 2), target_unit
+            if source_unit == "mph" and target_unit == "km/h":
+                return round(mph_to_kmh(raw_value), 2), target_unit
 
             if source_unit == "clicks" and target_unit == "mm":
                 return round(clicks_to_mm(raw_value), 2), target_unit
-
-            if source_unit == "degrees" and target_unit == "degrees":
-                return round(raw_value, 2), "°"
 
             return round(raw_value, 2), target_unit
 
@@ -619,7 +740,7 @@ def get_muelle_cc_data():
             return ts.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
         variables = {}
-        latest_timestamp = None
+        latest_timestamp_dt = None
 
         for r in rows:
             sensor_id = r[0]
@@ -631,7 +752,6 @@ def get_muelle_cc_data():
 
             config = VARIABLE_MAP.get(variable_name)
 
-            # Si no está mapeada, la dejamos en formato fallback
             if config:
                 converted_value, final_unit = convert_value(variable_name, raw_value)
                 key = config["key"]
@@ -644,8 +764,8 @@ def get_muelle_cc_data():
 
             iso_ts = normalize_timestamp(ts)
 
-            if latest_timestamp is None and iso_ts is not None:
-                latest_timestamp = iso_ts
+            if ts is not None and (latest_timestamp_dt is None or ts > latest_timestamp_dt):
+                latest_timestamp_dt = ts
 
             variables[key] = {
                 "label": label,
@@ -659,7 +779,7 @@ def get_muelle_cc_data():
         response = {
             "station_name": "APPCR Muelle CC",
             "station_code": "appcr_muelle_cc",
-            "timestamp": latest_timestamp,
+            "timestamp": normalize_timestamp(latest_timestamp_dt),
             "variables": variables
         }
 

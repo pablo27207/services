@@ -4,47 +4,88 @@
   export let endpoint = '';
   export let titulo = 'Nombre de la Estación';
 
+  // Nuevo: íconos configurables desde afuera
+  export let iconosVariables = {};
+
+  // Nuevo: lista de claves técnicas que sí querés mostrar
+  export let variablesVisibles = [];
+
   let loading = true;
   let ultimaFecha = '';
   let variables = [];
+  let error = '';
 
-  // Diccionario de íconos basado en las variables de tu JSON
-  const iconosVariables = {
-    "Humedad Exterior": "/iconosPaginaDatos/HumedadExterior.png",
-    "Presión Barométrica": "/iconosPaginaDatos/PresionBarometrica.png",
-    "Temperatura Exterior": "/iconosPaginaDatos/TemperaturaExterior.png",
-    "Velocidad del Viento": "/iconosPaginaDatos/VelocidadDeViento.png"
-  };
-
-  // Función para formatear la fecha a dd/mm/yyyy hh:mm y ajustar la zona horaria
   function formatearFecha(fechaStr) {
-    const fecha = new Date(fechaStr + 'Z'); // Asume que la fecha del JSON es UTC
+    if (!fechaStr) return '';
+
+    const fecha = new Date(fechaStr);
+    if (isNaN(fecha.getTime())) return '';
+
     const dia = String(fecha.getDate()).padStart(2, '0');
     const mes = String(fecha.getMonth() + 1).padStart(2, '0');
     const anio = fecha.getFullYear();
     const horas = String(fecha.getHours()).padStart(2, '0');
     const minutos = String(fecha.getMinutes()).padStart(2, '0');
+
     return `${dia}/${mes}/${anio} ${horas}:${minutos}`;
   }
 
+  function formatearValor(valor) {
+    if (valor === null || valor === undefined || valor === '') return '–';
+
+    const numero = Number(valor);
+    if (Number.isNaN(numero)) return valor;
+
+    return Number.isInteger(numero) ? numero : numero.toFixed(2);
+  }
+
+  function normalizarVariables(data) {
+    if (!data || typeof data !== 'object') return [];
+
+    const variablesObj = data.variables;
+    if (!variablesObj || typeof variablesObj !== 'object') return [];
+
+    let lista = Object.entries(variablesObj).map(([clave, item]) => ({
+      clave,
+      nombre: item?.label ?? clave,
+      unidad: item?.unit ?? '',
+      valor: item?.value,
+      timestamp: item?.timestamp ?? data.timestamp ?? '',
+      sensor: item?.sensor ?? '',
+      sensorId: item?.sensor_id ?? null,
+      icono: iconosVariables[clave] ?? '❓'
+    }));
+
+    // Si variablesVisibles tiene datos, filtra y respeta ese orden
+    if (Array.isArray(variablesVisibles) && variablesVisibles.length > 0) {
+      lista = variablesVisibles
+        .map((claveVisible) => lista.find((v) => v.clave === claveVisible))
+        .filter(Boolean);
+    }
+
+    return lista;
+  }
+
   onMount(async () => {
+    loading = true;
+    error = '';
+    variables = [];
+    ultimaFecha = '';
+
     try {
       const res = await fetch(endpoint);
+
+      if (!res.ok) {
+        throw new Error(`Error HTTP ${res.status}`);
+      }
+
       const data = await res.json();
 
-      if (data.length > 0) {
-        ultimaFecha = formatearFecha(data[0].timestamp);
-
-        variables = data.map(item => ({
-          nombre: item.variable,
-          unidad: item.unit ?? '',
-          // Redondea el valor a 2 decimales
-          valor: item.value !== null ? parseFloat(item.value.toFixed(2)) : null,
-          icono: iconosVariables[item.variable] ?? '❓'
-        }));
-      }
+      ultimaFecha = formatearFecha(data?.timestamp);
+      variables = normalizarVariables(data);
     } catch (err) {
-      console.error("Error al obtener datos:", err);
+      console.error('Error al obtener datos:', err);
+      error = 'No se pudieron cargar los datos de la estación.';
     } finally {
       loading = false;
     }
@@ -55,29 +96,43 @@
   <h2 class="nombre">{titulo}</h2>
 
   {#if loading}
-    <div class="estado"><em>Cargando datos...</em> <span class="spinner"></span></div>
+    <div class="estado">
+      <em>Cargando datos...</em>
+      <span class="spinner"></span>
+    </div>
+  {:else if error}
+    <p class="estado error">{error}</p>
   {:else if ultimaFecha}
     <p class="fecha">📅 Última medición: <strong>{ultimaFecha}</strong></p>
   {:else}
     <p class="estado"><em>No hay datos disponibles actualmente.</em></p>
   {/if}
 
-  <div class="cards-container">
-    {#each variables as variable}
-      <div class="variable-card tooltip-wrapper">
-        <span class="unidad">{variable.unidad}</span>
+  {#if !loading && variables.length > 0}
+    <div class="cards-container">
+      {#each variables as variable}
+        <div class="variable-card tooltip-wrapper">
+          <span class="unidad">{variable.unidad || '—'}</span>
 
-        {#if variable.icono && typeof variable.icono === 'string' && variable.icono.startsWith('/')}
-          <img class="icon-img" src={variable.icono} alt={variable.nombre} />
-        {:else}
-          <span class="icon">{variable.icono}</span>
-        {/if}
+          {#if variable.icono && typeof variable.icono === 'string' && variable.icono.startsWith('/')}
+            <img class="icon-img" src={variable.icono} alt={variable.nombre} />
+          {:else}
+            <span class="icon">{variable.icono}</span>
+          {/if}
 
-        <span class="tooltip">{variable.nombre}</span>
-        <span class="valor">{variable.valor ?? '–'}</span>
-      </div>
-    {/each}
-  </div>
+          <span class="tooltip">
+            {variable.nombre}
+            {#if variable.sensor}
+              <br />
+              <small>{variable.sensor}</small>
+            {/if}
+          </span>
+
+          <span class="valor">{formatearValor(variable.valor)}</span>
+        </div>
+      {/each}
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -96,10 +151,16 @@
     margin-bottom: 0.5rem;
   }
 
-  .fecha, .estado {
+  .fecha,
+  .estado {
     font-size: 0.95rem;
     color: #666;
     margin: 0.3rem 0 0.8rem;
+  }
+
+  .error {
+    color: #b00020;
+    font-weight: 600;
   }
 
   .spinner {
@@ -132,8 +193,8 @@
     padding: 15px;
     border-radius: 8px;
     text-align: center;
-    min-width: 100px;
-    max-width: 150px;
+    min-width: 110px;
+    max-width: 160px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -147,10 +208,9 @@
   }
 
   .icon {
-    font-size: 1.6rem;
+    font-size: 1.8rem;
   }
 
-  /* NUEVO: para íconos en imagen */
   .icon-img {
     width: 64px;
     height: 64px;
@@ -176,16 +236,22 @@
     bottom: 125%;
     left: 50%;
     transform: translateX(-50%);
-    background-color: rgba(0, 0, 0, 0.75);
+    background-color: rgba(0, 0, 0, 0.82);
     color: #fff;
-    padding: 4px 8px;
+    padding: 6px 8px;
     border-radius: 4px;
     font-size: 0.75rem;
     white-space: nowrap;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease-in-out;
-    z-index: 1;
+    z-index: 10;
+    line-height: 1.3;
+  }
+
+  .tooltip small {
+    font-size: 0.68rem;
+    color: #ddd;
   }
 
   .tooltip-wrapper:hover .tooltip {
