@@ -330,27 +330,31 @@ def get_latest_mareograph_data():
     return jsonify(data)
 
 #---------------------------Estacion Meteoroloigca Comodoro Rivadavia Puerto --------------------------------------------------------------
+from flask import jsonify
+from datetime import timezone
+
 @app.route("/api/appcr/puerto", methods=["GET"])
 def get_puerto_data():
     conn = get_db_connection()
     if conn is None:
         return jsonify({"error": "Internal Server Error - Database connection failed"}), 500
 
+    cur = None
     try:
         cur = conn.cursor()
 
-        # Filtramos por nombre de plataforma (más robusto que hardcodear un id numérico)
         cur.execute("""
-            SELECT 
+            SELECT
+                s.id AS sensor_id,
                 s.name AS sensor,
-                m."timestamp",
-                m.value,
+                v.name AS variable,
                 u.symbol AS unit,
-                v.name AS variable
-            FROM oogsj_data.sensor s
-            JOIN oogsj_data.platform p ON p.id = s.platform_id
-            JOIN oogsj_data.unit u ON u.id = s.unit_id
+                m."timestamp" AS ts,
+                m.value AS val
+            FROM oogsj_data.platform p
+            JOIN oogsj_data.sensor s ON s.platform_id = p.id
             JOIN oogsj_data.variable v ON v.id = s.variable_id
+            JOIN oogsj_data.unit u ON u.id = s.unit_id
             JOIN LATERAL (
                 SELECT m2."timestamp", m2.value
                 FROM oogsj_data.measurement m2
@@ -359,27 +363,157 @@ def get_puerto_data():
                 LIMIT 1
             ) m ON TRUE
             WHERE p.name = %s
-            ORDER BY s.name;
-        """, ('APPCR Puerto CR',))
+            ORDER BY v.name, s.name;
+        """, ("APPCR Puerto CR",))
 
-        data = [
-            {
-                "sensor": row[0],
-                "timestamp": row[1].isoformat() if row[1] else None,
-                "value": float(row[2]) if row[2] is not None else None,
-                "unit": row[3],
-                "variable": row[4],
+        rows = cur.fetchall()
+
+        if not rows:
+            return jsonify({
+                "station_code": "appcr_puerto_cr",
+                "station_name": "APPCR Puerto CR",
+                "timestamp": None,
+                "variables": {}
+            }), 200
+
+        def timestamp_to_iso_z(ts):
+            if ts is None:
+                return None
+
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+
+            return ts.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+        def normalizar_clave(variable_name, sensor_name):
+            variable_name = (variable_name or "").strip().lower()
+            sensor_name = (sensor_name or "").strip().lower()
+
+            texto = f"{variable_name} {sensor_name}"
+
+            if "bar" in texto and "bar_trend" not in texto:
+                return "barometric_pressure"
+            elif "dew_point_out" in texto or "dew point out" in texto:
+                return "dew_point_outdoor"
+            elif "heat_index_out" in texto or "heat index out" in texto:
+                return "heat_index_outdoor"
+            elif "temp_in" in texto or "indoor" in texto:
+                return "indoor_temperature"
+            elif "temp_out" in texto or "outdoor temperature" in texto:
+                return "outdoor_temperature"
+            elif "rainfall" in texto or "rain" in texto:
+                return "rainfall"
+            elif "wind_chill" in texto:
+                return "wind_chill"
+            elif "wind_dir_of_prevail" in texto or "wind direction" in texto or "wind_dir" in texto:
+                return "wind_direction"
+            elif "wind_speed_avg" in texto or "wind speed avg" in texto:
+                return "wind_speed_avg"
+            elif "wind_speed" in texto or "wind speed" in texto:
+                return "wind_speed"
+            elif "hum_out" in texto or "humidity out" in texto or "humedad exterior" in texto:
+                return "outdoor_humidity"
+
+            clave = sensor_name or variable_name or "unknown_variable"
+            clave = clave.replace(" ", "_").replace("-", "_").replace("/", "_")
+            while "__" in clave:
+                clave = clave.replace("__", "_")
+            return clave.strip("_")
+
+        def generar_label(clave, variable_name):
+            labels = {
+                "barometric_pressure": "Presión barométrica",
+                "dew_point_outdoor": "Punto de rocío exterior",
+                "heat_index_outdoor": "Índice de calor exterior",
+                "indoor_temperature": "Temperatura interior",
+                "outdoor_temperature": "Temperatura exterior",
+                "rainfall": "Precipitación",
+                "wind_chill": "Sensación térmica por viento",
+                "wind_direction": "Dirección predominante del viento",
+                "wind_speed_avg": "Velocidad media del viento",
+                "wind_speed": "Velocidad del viento",
+                "outdoor_humidity": "Humedad exterior",
             }
-            for row in cur.fetchall()
-        ]
 
-        cur.close()
-        conn.close()
-        return jsonify(data)
+            return labels.get(
+                clave,
+                variable_name if variable_name else clave.replace("_", " ").capitalize()
+            )
+
+        def normalizar_unidad_y_valor(clave, unit, val):
+            if val is None:
+                return unit, None
+
+            try:
+                valor = float(val)
+            except (TypeError, ValueError):
+                return unit, None
+
+            unit_limpia = (unit or "").strip().lower()
+
+            # Convertimos tanto velocidad media como velocidad simple
+            if clave in ["wind_speed_avg", "wind_speed"]:
+                if unit_limpia in ["m/s", "mps", "meter/second", "meters/second"]:
+                    return "km/h", round(valor * 3.6, 2)
+
+                if unit_limpia in ["km/h", "kmh"]:
+                    return "km/h", round(valor, 2)
+
+                return unit, round(valor, 2)
+
+            return unit, round(valor, 2)
+
+        variables = {}
+        latest_timestamp = None
+
+        for r in rows:
+            sensor_id = r[0]
+            sensor = r[1]
+            variable_name = r[2]
+            unit = r[3]
+            ts = r[4]
+            val = r[5]
+
+            clave = normalizar_clave(variable_name, sensor)
+            label = generar_label(clave, variable_name)
+            unit_normalizada, value_normalizado = normalizar_unidad_y_valor(clave, unit, val)
+
+            variables[clave] = {
+                "label": label,
+                "sensor": sensor,
+                "sensor_id": sensor_id,
+                "timestamp": timestamp_to_iso_z(ts),
+                "unit": unit_normalizada,
+                "value": value_normalizado
+            }
+
+            if ts is not None and (latest_timestamp is None or ts > latest_timestamp):
+                latest_timestamp = ts
+
+        response = {
+            "station_code": "appcr_puerto_cr",
+            "station_name": "APPCR Puerto CR",
+            "timestamp": timestamp_to_iso_z(latest_timestamp),
+            "variables": variables
+        }
+
+        return jsonify(response), 200
 
     except Exception as e:
         print(f"❌ ERROR en /api/appcr/puerto: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
+
+    finally:
+        try:
+            if cur:
+                cur.close()
+        except Exception:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass
 #------------------------------Estacion al puerto mas facil ultimos dias para el grafico
 
 @app.route("/api/appcr/puerto/history", methods=["GET"])
@@ -392,18 +526,18 @@ def get_puerto_history():
     if conn is None:
         return jsonify({"error": "Internal Server Error - Database connection failed"}), 500
 
+    cur = None
     try:
         cur = conn.cursor()
 
         diez_dias_atras = datetime.utcnow() - timedelta(days=10)
 
-        # Opción A (robusta): filtrar por nombre de plataforma
         cur.execute("""
             SELECT 
                 v.name        AS variable_name,
+                u.symbol      AS unit,
                 m."timestamp" AS ts,
-                m.value       AS val,
-                u.symbol      AS unit
+                m.value       AS val
             FROM oogsj_data.measurement m
             JOIN oogsj_data.sensor   s ON s.id = m.sensor_id
             JOIN oogsj_data.platform p ON p.id = s.platform_id
@@ -412,32 +546,19 @@ def get_puerto_history():
             WHERE p.name = %s
               AND m."timestamp" >= %s
             ORDER BY v.name, m."timestamp";
-        """, ('APPCR Puerto CR', diez_dias_atras))
-
-        # ---- Opción B (si preferís por patrón en nombre de sensor, Puerto CR suele ser 160710) ----
-        # cur.execute("""
-        #     SELECT 
-        #         v.name        AS variable_name,
-        #         m."timestamp" AS ts,
-        #         m.value       AS val,
-        #         u.symbol      AS unit
-        #     FROM oogsj_data.measurement m
-        #     JOIN oogsj_data.sensor   s ON s.id = m.sensor_id
-        #     JOIN oogsj_data.variable v ON v.id = s.variable_id
-        #     JOIN oogsj_data.unit     u ON u.id = s.unit_id
-        #     WHERE s.name LIKE '%%160710%%'
-        #       AND m."timestamp" >= %s
-        #     ORDER BY v.name, m."timestamp";
-        # """, (diez_dias_atras,))
+        """, ("APPCR Puerto CR", diez_dias_atras))
 
         rows = cur.fetchall()
-        cur.close()
-        conn.close()
 
         data = {}
-        for variable_name, ts, val, unit in rows:
-            bucket = data.setdefault(variable_name, {"unit": unit, "data": []})
-            bucket["data"].append({
+        for variable_name, unit, ts, val in rows:
+            if variable_name not in data:
+                data[variable_name] = {
+                    "unit": unit,
+                    "data": []
+                }
+
+            data[variable_name]["data"].append({
                 "timestamp": ts.isoformat() if ts else None,
                 "value": float(val) if val is not None else None
             })
@@ -448,64 +569,237 @@ def get_puerto_history():
         print(f"❌ ERROR en /api/appcr/puerto/history: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
 
+    finally:
+        try:
+            if cur:
+                cur.close()
+        except Exception:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass
 
 #--------------------------endpoint estacion meteorologica caleta cordova ultimos datos ----------------------------------------------------
 ### ESTE ES EL CORRECTO, LUEGO VER QUE METODOS SOBRAN Y COMENTARLO
 
+from flask import jsonify
+from datetime import timezone
+
 @app.route("/api/appcr/muelle_cc", methods=["GET"])
 def get_muelle_cc_data():
     """
-    Obtiene el último registro de cada sensor de la estación "APPCR Muelle CC".
+    Obtiene el último registro de cada sensor de la estación APPCR Muelle CC
+    y lo normaliza a un formato consumible por el frontend.
     """
     conn = get_db_connection()
     if conn is None:
         return jsonify({"error": "Internal Server Error - Database connection failed"}), 500
 
+    cur = None
     try:
         cur = conn.cursor()
 
-        # Usamos una subconsulta con LATERAL JOIN para obtener el registro más reciente
-        # para cada sensor que contenga el identificador '160710' en su nombre.
         cur.execute("""
-            SELECT 
+            SELECT
+                s.id   AS sensor_id,
                 s.name AS sensor,
-                m.timestamp,
-                m.value,
+                v.name AS variable,
                 u.symbol AS unit,
-                v.name AS variable
-            FROM oogsj_data.sensor s
-            JOIN oogsj_data.unit u ON s.unit_id = u.id
+                m."timestamp" AS ts,
+                m.value AS val
+            FROM oogsj_data.platform p
+            JOIN oogsj_data.sensor   s ON s.platform_id = p.id
+            JOIN oogsj_data.unit     u ON u.id = s.unit_id
             JOIN oogsj_data.variable v ON v.id = s.variable_id
             JOIN LATERAL (
-                SELECT timestamp, value
-                FROM oogsj_data.measurement
-                WHERE sensor_id = s.id
-                ORDER BY timestamp DESC
+                SELECT m2."timestamp", m2.value
+                FROM oogsj_data.measurement m2
+                WHERE m2.sensor_id = s.id
+                ORDER BY m2."timestamp" DESC
                 LIMIT 1
-            ) m ON true
-            WHERE s.name LIKE '%%160710%%'
-            ORDER BY s.name;
-        """)
+            ) m ON TRUE
+            WHERE p.name = %s
+            ORDER BY v.name, s.name;
+        """, ("APPCR Muelle CC",))
 
-        data = [
-            {
-                "sensor": row[0],
-                "timestamp": row[1].isoformat() if row[1] else None,
-                "value": float(row[2]) if row[2] is not None else None,
-                "unit": row[3],
-                "variable": row[4]
+        rows = cur.fetchall()
+
+        if not rows:
+            return jsonify({
+                "station_name": "APPCR Muelle CC",
+                "station_code": "appcr_muelle_cc",
+                "timestamp": None,
+                "variables": {}
+            }), 200
+
+        VARIABLE_MAP = {
+            "Bar": {
+                "key": "barometric_pressure",
+                "label": "Presión barométrica",
+                "source_unit": "hPa",
+                "target_unit": "hPa"
+            },
+            "Dew Point Out": {
+                "key": "dew_point_outdoor",
+                "label": "Punto de rocío exterior",
+                "source_unit": "°F",
+                "target_unit": "°C"
+            },
+            "Heat Index Out": {
+                "key": "heat_index_outdoor",
+                "label": "Índice de calor exterior",
+                "source_unit": "°F",
+                "target_unit": "°C"
+            },
+            "Rainfall Clicks": {
+                "key": "rainfall",
+                "label": "Precipitación",
+                "source_unit": "clicks",
+                "target_unit": "mm"
+            },
+            "Temp In": {
+                "key": "indoor_temperature",
+                "label": "Temperatura interior",
+                "source_unit": "°F",
+                "target_unit": "°C"
+            },
+            "Temp Out": {
+                "key": "outdoor_temperature",
+                "label": "Temperatura exterior",
+                "source_unit": "°F",
+                "target_unit": "°C"
+            },
+            "Wind Chill": {
+                "key": "wind_chill",
+                "label": "Sensación térmica por viento",
+                "source_unit": "°F",
+                "target_unit": "°C"
+            },
+            "Wind Dir Of Prevail": {
+                "key": "wind_direction",
+                "label": "Dirección predominante del viento",
+                "source_unit": "degrees",
+                "target_unit": "degrees"
+            },
+            "Wind Speed Avg": {
+                "key": "wind_speed_avg",
+                "label": "Velocidad media del viento",
+                "source_unit": "mph",
+                "target_unit": "km/h"
             }
-            for row in cur.fetchall()
-        ]
+        }
 
-        cur.close()
-        conn.close()
-        return jsonify(data)
+        def fahrenheit_to_celsius(value):
+            return (value - 32) * 5.0 / 9.0
+
+        def mph_to_kmh(value):
+            return value * 1.60934
+
+        def identity(value):
+            return value
+
+        def clicks_to_mm(value):
+            # Ajustar si el sensor real usa otra equivalencia
+            MM_PER_CLICK = 0.2
+            return value * MM_PER_CLICK
+
+        def convert_value(variable_name, raw_value):
+            if raw_value is None:
+                return None, None
+
+            config = VARIABLE_MAP.get(variable_name)
+            if not config:
+                return round(raw_value, 2), None
+
+            source_unit = config["source_unit"]
+            target_unit = config["target_unit"]
+
+            if source_unit == target_unit:
+                if source_unit == "degrees":
+                    return round(identity(raw_value), 2), "°"
+                return round(identity(raw_value), 2), target_unit
+
+            if source_unit == "°F" and target_unit == "°C":
+                return round(fahrenheit_to_celsius(raw_value), 2), target_unit
+
+            if source_unit == "mph" and target_unit == "km/h":
+                return round(mph_to_kmh(raw_value), 2), target_unit
+
+            if source_unit == "clicks" and target_unit == "mm":
+                return round(clicks_to_mm(raw_value), 2), target_unit
+
+            return round(raw_value, 2), target_unit
+
+        def normalize_timestamp(ts):
+            if ts is None:
+                return None
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            return ts.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+        variables = {}
+        latest_timestamp_dt = None
+
+        for r in rows:
+            sensor_id = r[0]
+            sensor_name = r[1]
+            variable_name = r[2]
+            db_unit = r[3]
+            ts = r[4]
+            raw_value = float(r[5]) if r[5] is not None else None
+
+            config = VARIABLE_MAP.get(variable_name)
+
+            if config:
+                converted_value, final_unit = convert_value(variable_name, raw_value)
+                key = config["key"]
+                label = config["label"]
+            else:
+                converted_value = round(raw_value, 2) if raw_value is not None else None
+                final_unit = db_unit
+                key = variable_name.lower().replace(" ", "_")
+                label = variable_name
+
+            iso_ts = normalize_timestamp(ts)
+
+            if ts is not None and (latest_timestamp_dt is None or ts > latest_timestamp_dt):
+                latest_timestamp_dt = ts
+
+            variables[key] = {
+                "label": label,
+                "sensor": sensor_name,
+                "sensor_id": sensor_id,
+                "value": converted_value,
+                "unit": final_unit,
+                "timestamp": iso_ts
+            }
+
+        response = {
+            "station_name": "APPCR Muelle CC",
+            "station_code": "appcr_muelle_cc",
+            "timestamp": normalize_timestamp(latest_timestamp_dt),
+            "variables": variables
+        }
+
+        return jsonify(response), 200
 
     except Exception as e:
         print(f"❌ ERROR en /api/appcr/muelle_cc: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
-    
+
+    finally:
+        try:
+            if cur:
+                cur.close()
+        except Exception:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass
 #--------------------------historico muelle cc este es el real --------------------------------------------
 #te trae en formato json todos los datos en los ultimos 10 dias
 @app.route("/api/appcr/muelle_cc/history", methods=["GET"])
