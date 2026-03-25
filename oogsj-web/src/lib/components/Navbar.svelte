@@ -43,6 +43,7 @@
         <li><a href="/equipos" sveltekit:navigate>Equipos</a></li>
         <li><a href="/contacto" sveltekit:navigate>Contacto</a></li>
         <li><a href="/biblioteca" sveltekit:navigate>Biblioteca del mar</a></li>
+        <li><a href="/costa-segura" sveltekit:navigate>Informacion de costa</a></li>
       </ul>
     </div>
   </div>
