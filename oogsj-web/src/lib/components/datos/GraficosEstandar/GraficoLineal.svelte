@@ -169,7 +169,7 @@
         toolbar: {
           show: true,
           tools: {
-            download: true,
+            download: false,
             selection: false,
             zoom: true,
             zoomin: true,
@@ -374,6 +374,7 @@
     border-radius: 12px;
     margin-bottom: 1rem;
     box-sizing: border-box;
+    overflow: visible;
   }
 
   .unidad-grafico {
@@ -386,6 +387,20 @@
 
   .chart-container {
     width: 100%;
+    position: relative;
+    overflow: visible;
+  }
+
+  :global(.apexcharts-canvas) {
+    overflow: visible !important;
+  }
+
+  :global(.apexcharts-tooltip) {
+    z-index: 9999 !important;
+  }
+
+  :global(.apexcharts-menu) {
+    z-index: 9999 !important;
   }
 
   @media (max-width: 640px) {
