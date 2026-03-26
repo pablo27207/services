@@ -44,6 +44,7 @@
         gap: 2rem;
         align-items: center;
         padding: 1rem;
+        overflow: visible;
     }
 
     .chart-card {
@@ -58,22 +59,29 @@
         align-items: center;
         width: 100%;
         max-width: 100%;
+        position: relative;
+        overflow: visible;
     }
 
     .chart-header {
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
         width: 100%;
         margin-bottom: 0.5rem;
+        gap: 0.75rem;
+        overflow: visible;
     }
 
     .chart-header h3 {
         margin: 0;
+        flex: 1;
     }
 
     .info-wrapper {
         position: relative;
+        z-index: 50;
+        flex-shrink: 0;
     }
 
     .info-button {
@@ -81,14 +89,17 @@
         border: none;
         cursor: pointer;
         font-size: 1.2rem;
+        line-height: 1;
+        padding: 0;
     }
 
     .info-tooltip {
         display: none;
         position: absolute;
         top: 130%;
-        left: 50%;
-        transform: translateX(-50%);
+        right: 0;
+        left: auto;
+        transform: none;
         background: #f1f1f1;
         color: #333;
         padding: 0.6rem;
@@ -96,11 +107,37 @@
         border-radius: 5px;
         font-size: 0.85rem;
         width: 220px;
-        z-index: 5;
+        z-index: 9999;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     }
 
     .info-wrapper:hover .info-tooltip {
         display: block;
+    }
+
+    @media (max-width: 640px) {
+        .charts {
+            padding: 0.75rem;
+            gap: 1.25rem;
+        }
+
+        .chart-card {
+            padding: 0.85rem;
+        }
+
+        .chart-header {
+            align-items: flex-start;
+        }
+
+        .chart-header h3 {
+            font-size: 1rem;
+        }
+
+        .info-tooltip {
+            width: 190px;
+            font-size: 0.8rem;
+            right: 0;
+        }
     }
 </style>
 
