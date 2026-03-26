@@ -1,208 +1,417 @@
 <script>
-    import { onMount, tick } from 'svelte';
-    import * as d3 from 'd3';
-    import { timeFormatLocale } from 'd3';
-    import { onDestroy } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
+  import ApexCharts from 'apexcharts';
 
-    let resizeObserver;
+  export let data = [];
+  export let label = '';
+  export let color = '#2563eb';
+  export let height = 320;
 
-    export let data = [];
-    export let label = '';
-    export let color = 'steelblue';
-    export let height = 300;
+  let chartContainer;
+  let chartInstance;
 
-    const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+  // =========================================================
+  // HELPERS DE FORMATO
+  // =========================================================
 
-    let svgContainer;
-    let tooltip;
-    let chartCard;
+  function obtenerDecimales(label) {
+    const texto = (label || '').toLowerCase();
 
-    const localeEs = timeFormatLocale({
-        dateTime: "%A, %e de %B de %Y, %X",
-        date: "%d/%m/%Y",
-        time: "%H:%M:%S",
-        periods: ["AM", "PM"],
-        days: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"],
-        shortDays: ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"],
-        months: ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"],
-        shortMonths: ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
-    });
+    if (texto.includes('altura')) return 2;
+    if (texto.includes('periodo') || texto.includes('período')) return 1;
+    if (texto.includes('bater')) return 2;
+    if (texto.includes('radiación') || texto.includes('radiacion')) return 0;
+    if (texto.includes('temperatura')) return 1;
+    if (texto.includes('humedad')) return 0;
+    if (texto.includes('velocidad')) return 1;
 
-    onMount(async () => {
-        await tick();
-        tooltip = d3.select(`#tooltip-${label.replace(/\s+/g, '-')}`);
-        drawChart();
+    return 1;
+  }
 
-        resizeObserver = new ResizeObserver(() => {
-            drawChart();
+  function formatearValor(label, valor) {
+    const numero = Number(valor);
+    if (Number.isNaN(numero)) return '–';
+
+    return numero.toFixed(obtenerDecimales(label));
+  }
+
+  function obtenerUnidad(data) {
+    const unidad = data.find(d => d?.unit)?.unit;
+    return unidad ? String(unidad).trim() : '';
+  }
+
+  function obtenerGapMaximoMs(label) {
+    const texto = (label || '').toLowerCase();
+
+    // Regla base razonable para cortar líneas en huecos grandes
+    if (texto.includes('bater')) return 12 * 60 * 60 * 1000;
+    return 6 * 60 * 60 * 1000;
+  }
+
+  function normalizarDatos(data) {
+    if (!Array.isArray(data)) return [];
+
+    return data
+      .filter(d => d && d.timestamp !== undefined && d.value !== undefined && d.value !== null && !isNaN(d.value))
+      .map(d => ({
+        ...d,
+        timestamp: d.timestamp instanceof Date ? d.timestamp : new Date(d.timestamp),
+        value: parseFloat(d.value)
+      }))
+      .filter(d => !isNaN(d.timestamp.getTime()) && !isNaN(d.value))
+      .sort((a, b) => a.timestamp - b.timestamp);
+  }
+
+  // Esta función arma segmentos separados cuando hay huecos grandes.
+  // Así evitamos que el gráfico una puntos con una línea engañosa.
+  function construirSeriesConGaps(datosNormalizados, label) {
+    const gapMaximoMs = obtenerGapMaximoMs(label);
+    const series = [];
+
+    if (datosNormalizados.length === 0) return series;
+
+    let segmentoActual = [];
+
+    for (let i = 0; i < datosNormalizados.length; i++) {
+      const punto = datosNormalizados[i];
+
+      if (i === 0) {
+        segmentoActual.push({
+          x: punto.timestamp.getTime(),
+          y: punto.value
         });
-        if (chartCard) resizeObserver.observe(chartCard);
+        continue;
+      }
 
-        window.addEventListener("resize", drawChart);
-    });
+      const anterior = datosNormalizados[i - 1];
+      const diferencia = punto.timestamp - anterior.timestamp;
 
-    function drawChart() {
-        if (!chartCard) return;
-
-        const width = chartCard.clientWidth;
-
-        const svg = d3.select(svgContainer)
-            .attr("viewBox", `0 0 ${width} ${height}`)
-            .attr("preserveAspectRatio", "xMidYMid meet")
-            .html("");
-
-        if (!data || data.length === 0) {
-            svg.append("text")
-                .attr("x", width / 2)
-                .attr("y", height / 2)
-                .attr("text-anchor", "middle")
-                .text("No hay datos disponibles");
-            return;
+      if (diferencia > gapMaximoMs) {
+        if (segmentoActual.length > 0) {
+          series.push({
+            name: label,
+            data: segmentoActual
+          });
         }
 
-        const filteredData = data.filter(d => !isNaN(d.value) && d.timestamp);
-        
-        if (filteredData.length === 0) {
-             svg.append("text")
-                .attr("x", width / 2)
-                .attr("y", height / 2)
-                .attr("text-anchor", "middle")
-                .text("No hay datos válidos para mostrar");
-            return;
-        }
+        segmentoActual = [];
+      }
 
-        filteredData.forEach(d => {
-            if (typeof d.timestamp === 'string') {
-                d.timestamp = new Date(d.timestamp);
-            }
-            d.value = parseFloat(d.value);
-        });
-
-        const x = d3.scaleTime()
-            .domain(d3.extent(filteredData, d => d.timestamp))
-            .range([margin.left, width - margin.right]);
-
-        // --- SECCIÓN MODIFICADA ---
-        const yMin = d3.min(filteredData, d => d.value);
-        const yMax = d3.max(filteredData, d => d.value);
-
-        if (yMin === undefined || yMax === undefined) return;
-
-        let buffer;
-        if (yMin === yMax) {
-            buffer = yMax * 0.05;
-        } else {
-            buffer = (yMax - yMin) * 0.1;
-        }
-        if (buffer === 0) buffer = 1;
-
-        const y = d3.scaleLinear()
-            .domain([yMin - buffer, yMax + buffer])
-            .range([height - margin.bottom, margin.top]);
-        // --- FIN DE LA SECCIÓN MODIFICADA ---
-
-        const format = localeEs.format("%a %d");
-
-        svg.append("g")
-            .attr("class", "x-axis")
-            .attr("transform", `translate(0,${height - margin.bottom})`)
-            .call(d3.axisBottom(x).tickFormat(format));
-
-        svg.append("g")
-            .attr("transform", `translate(${margin.left},0)`)
-            .call(d3.axisLeft(y));
-
-        svg.append("path")
-            .datum(filteredData)
-            .attr("class", "line-path")
-            .attr("fill", "none")
-            .attr("stroke", color)
-            .attr("stroke-width", 2)
-            .attr("d", d3.line()
-                .x(d => x(d.timestamp))
-                .y(d => y(d.value)));
-
-        svg.selectAll("circle")
-            .data(filteredData)
-            .enter().append("circle")
-            .attr("cx", d => x(d.timestamp))
-            .attr("cy", d => y(d.value))
-            .attr("r", 4)
-            .attr("fill", color)
-            .on("mouseover", (event, d) => {
-                tooltip
-                    .style("display", "block")
-                    .html(`📅 ${localeEs.format("%d/%m/%Y")(d.timestamp)}<br>🔹 ${label}: ${d.value}`);
-            })
-            .on("mousemove", event => {
-                const bounds = chartCard.getBoundingClientRect();
-                tooltip
-                    .style("left", `${event.clientX - bounds.left + 10}px`)
-                    .style("top", `${event.clientY - bounds.top - 40}px`);
-            })
-            .on("mouseout", () => {
-                tooltip.style("display", "none");
-            });
-
-        const zoom = d3.zoom()
-            .scaleExtent([1, 10])
-            .translateExtent([[0, 0], [width, height]])
-            .on("zoom", (event) => {
-                const newX = event.transform.rescaleX(x);
-                const newLine = d3.line()
-                    .x(d => newX(d.timestamp))
-                    .y(d => y(d.value));
-
-                svg.select(".x-axis").call(d3.axisBottom(newX).tickFormat(format));
-                svg.select(".line-path").attr("d", newLine(filteredData));
-                svg.selectAll("circle").attr("cx", d => newX(d.timestamp));
-            });
-
-        svg.call(zoom);
+      segmentoActual.push({
+        x: punto.timestamp.getTime(),
+        y: punto.value
+      });
     }
 
-    onDestroy(() => {
-        if (resizeObserver) resizeObserver.disconnect();
-        window.removeEventListener("resize", drawChart);
+    if (segmentoActual.length > 0) {
+      series.push({
+        name: label,
+        data: segmentoActual
+      });
+    }
+
+    return series;
+  }
+
+  function formatearFechaCorta(timestamp) {
+    const fecha = new Date(timestamp);
+
+    return fecha.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit'
     });
+  }
+
+  function formatearFechaTooltip(timestamp) {
+    const fecha = new Date(timestamp);
+
+    return fecha.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  }
+
+  function formatearHoraTooltip(timestamp) {
+    const fecha = new Date(timestamp);
+
+    return fecha.toLocaleTimeString('es-AR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  }
+
+  // =========================================================
+  // DATOS DERIVADOS
+  // =========================================================
+
+  $: datosNormalizados = normalizarDatos(data);
+  $: unidadGrafico = obtenerUnidad(datosNormalizados);
+  $: seriesApex = construirSeriesConGaps(datosNormalizados, label);
+
+  // =========================================================
+  // OPCIONES DEL GRÁFICO
+  // =========================================================
+
+  function crearOpciones() {
+    const esMobile = typeof window !== 'undefined' ? window.innerWidth < 640 : false;
+
+    return {
+      chart: {
+        type: 'line',
+        height,
+        animations: {
+          enabled: true,
+          easing: 'easeinout',
+          speed: 350
+        },
+        toolbar: {
+          show: true,
+          tools: {
+            download: false,
+            selection: false,
+            zoom: true,
+            zoomin: true,
+            zoomout: true,
+            pan: true,
+            reset: true
+          }
+        },
+        zoom: {
+          enabled: true
+        },
+        foreColor: '#374151',
+        fontFamily: 'inherit'
+      },
+
+      series: seriesApex,
+
+      colors: [color],
+
+      stroke: {
+        curve: 'straight',
+        width: esMobile ? 2 : 3
+      },
+
+      markers: {
+        size: esMobile ? 3 : 4,
+        hover: {
+          sizeOffset: 2
+        }
+      },
+
+      dataLabels: {
+        enabled: false
+      },
+
+      noData: {
+        text: 'No hay datos disponibles',
+        align: 'center',
+        verticalAlign: 'middle',
+        style: {
+          color: '#6b7280',
+          fontSize: '14px'
+        }
+      },
+
+      grid: {
+        borderColor: '#e5e7eb',
+        strokeDashArray: 3,
+        padding: {
+          left: 8,
+          right: 10,
+          top: 10,
+          bottom: 0
+        }
+      },
+
+      xaxis: {
+        type: 'datetime',
+        labels: {
+          datetimeUTC: false,
+          style: {
+            fontSize: esMobile ? '10px' : '11px'
+          },
+          formatter: function (value) {
+            return formatearFechaCorta(value);
+          }
+        },
+        axisBorder: {
+          color: '#9ca3af'
+        },
+        axisTicks: {
+          color: '#9ca3af'
+        },
+        tooltip: {
+          enabled: false
+        }
+      },
+
+      yaxis: {
+        decimalsInFloat: obtenerDecimales(label),
+        labels: {
+          style: {
+            fontSize: esMobile ? '10px' : '11px'
+          },
+          formatter: function (value) {
+            return formatearValor(label, value);
+          }
+        }
+      },
+
+      tooltip: {
+        shared: false,
+        intersect: true,
+        x: {
+          formatter: function (value) {
+            const fecha = formatearFechaTooltip(value);
+            const hora = formatearHoraTooltip(value);
+            return `${fecha} ${hora}`;
+          }
+        },
+        y: {
+          formatter: function (value) {
+            const valor = formatearValor(label, value);
+            return unidadGrafico ? `${valor} ${unidadGrafico}` : valor;
+          },
+          title: {
+            formatter: function () {
+              return `${label}: `;
+            }
+          }
+        }
+      },
+
+      legend: {
+        show: false
+      },
+
+      responsive: [
+        {
+          breakpoint: 640,
+          options: {
+            chart: {
+              height: 260
+            }
+          }
+        },
+        {
+          breakpoint: 420,
+          options: {
+            chart: {
+              height: 240
+            }
+          }
+        }
+      ]
+    };
+  }
+
+  // =========================================================
+  // RENDER / UPDATE
+  // =========================================================
+
+  async function renderChart() {
+    if (!chartContainer) return;
+
+    if (chartInstance) {
+      chartInstance.destroy();
+      chartInstance = null;
+    }
+
+    const opciones = crearOpciones();
+    chartInstance = new ApexCharts(chartContainer, opciones);
+    await chartInstance.render();
+  }
+
+  onMount(() => {
+    renderChart();
+
+    const onResize = () => {
+      renderChart();
+    };
+
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      window.removeEventListener('resize', onResize);
+
+      if (chartInstance) {
+        chartInstance.destroy();
+        chartInstance = null;
+      }
+    };
+  });
+
+  // Si cambian los datos o propiedades, recreamos el gráfico.
+  $: if (chartContainer && data) {
+    renderChart();
+  }
+
+  onDestroy(() => {
+    if (chartInstance) {
+      chartInstance.destroy();
+      chartInstance = null;
+    }
+  });
 </script>
 
-<div bind:this={chartCard} class="grafico-card">
-    <svg bind:this={svgContainer}></svg>
-    <div
-        class="tooltip"
-        id={"tooltip-" + label.replace(/\s+/g, '-')}
-    ></div>
+<div class="grafico-card">
+  {#if unidadGrafico}
+    <p class="unidad-grafico">Unidad: {unidadGrafico}</p>
+  {/if}
+
+  <div bind:this={chartContainer} class="chart-container"></div>
 </div>
 
 <style>
+  .grafico-card {
+    width: 100%;
+    position: relative;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    box-sizing: border-box;
+    overflow: visible;
+  }
+
+  .unidad-grafico {
+    margin: 0 0 0.45rem 0.4rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #4b5563;
+    text-align: left;
+  }
+
+  .chart-container {
+    width: 100%;
+    position: relative;
+    overflow: visible;
+  }
+
+  :global(.apexcharts-canvas) {
+    overflow: visible !important;
+  }
+
+  :global(.apexcharts-tooltip) {
+    z-index: 9999 !important;
+  }
+
+  :global(.apexcharts-menu) {
+    z-index: 9999 !important;
+  }
+
+  @media (max-width: 640px) {
     .grafico-card {
-        width: 100%;
-        min-width: 600px;
-        position: relative;
-        padding: 0.5rem;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-        margin-bottom: 1rem;
+      padding: 0.35rem;
+      border-radius: 10px;
     }
 
-    svg {
-        width: 100%;
-        height: auto;
-        display: block;
+    .unidad-grafico {
+      font-size: 0.82rem;
+      margin-left: 0.25rem;
     }
-
-    .tooltip {
-        position: absolute;
-        display: none;
-        background: #fff;
-        border: 1px solid #ccc;
-        padding: 6px;
-        pointer-events: none;
-        font-size: 0.85rem;
-        border-radius: 4px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        z-index: 9999;
-    }
+  }
 </style>
