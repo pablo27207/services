@@ -1,13 +1,13 @@
 <script>
-  import CostaSegura from '$lib/components/CostaSegura/CostaSegura.svelte';
+  import InformacionCosta from '$lib/components/InformacionCosta/InformacionCosta.svelte';
 </script>
 
 <svelte:head>
-  <title>Costa Segura</title>
+  <title>Información de Costa</title>
   <meta
     name="description"
-    content="Información sobre lugares habilitados, actividades costeras, seguridad en el mar y contenido educativo para la comunidad."
+    content="Información visual y educativa sobre condiciones del mar, actividades costeras, viento, oleaje, mareas y recomendaciones para la comunidad."
   />
 </svelte:head>
 
-<CostaSegura />
+<InformacionCosta />
