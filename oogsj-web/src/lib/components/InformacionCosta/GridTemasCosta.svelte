@@ -47,7 +47,7 @@
 
   h2 {
     font-size: clamp(2rem, 4vw, 3rem);
-    color: #09263a;
+    color: #a0b1bd;
     margin: 0 0 1rem;
     line-height: 1.1;
   }
