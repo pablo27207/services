@@ -117,3 +117,217 @@ export const checklistCosta = [
       'El viento, el oleaje y la marea pueden cambiar. No des por estable una condición que ya cambió.'
   }
 ];
+
+// ─── AGREGAR este export al final de informacionCostaData.js ──────────────
+// Los exports existentes (temasCosta, escenariosCosta, checklistCosta) se mantienen intactos.
+
+export const categoriasTemas = [
+  {
+    id: 'mar',
+    titulo: 'El Mar',
+    icono: '🌊',
+    temas: [
+      {
+        id: 'olas',
+        icono: '🌊',
+        titulo: 'Cómo leer el mar',
+        descripcion:
+          'El comportamiento de las olas da señales claras sobre el estado del mar antes de ingresar.',
+        contenido: {
+          intro:
+            'Las olas no son aleatorias. Su tamaño, frecuencia y forma en la costa brindan información concreta sobre la energía del mar en ese momento. Aprender a observarlas permite tomar decisiones con más criterio.',
+          puntos: [
+            {
+              titulo: 'Altura de ola',
+              texto:
+                'Se mide desde el punto más bajo (valle) hasta el punto más alto (cresta). Olas más altas implican mayor energía y pueden dificultar el ingreso o permanencia en el agua.'
+            },
+            {
+              titulo: 'Período',
+              texto:
+                'Es el tiempo entre dos crestas consecutivas. Un período largo indica olas más organizadas, con mayor energía y alcance. Un período corto indica oleaje fragmentado y menos potente.'
+            },
+            {
+              titulo: 'Zona de rompiente',
+              texto:
+                'Área donde las olas pierden profundidad y colapsan. Su distancia de la orilla y la forma en que rompen indican cuánta energía liberan y qué tan profundo es el fondo.'
+            },
+            {
+              titulo: 'Corrientes de retorno',
+              texto:
+                'Cuando las olas rompen cerca de la orilla, el agua vuelve al mar formando corrientes. Son difíciles de ver pero pueden arrastrar a una persona rápidamente hacia afuera.'
+            }
+          ],
+          nota: 'El oleaje puede cambiar con rapidez. Condiciones aparentemente calmas pueden modificarse en minutos por efecto del viento o la marea.'
+        }
+      },
+      {
+        id: 'mareas',
+        icono: '🌙',
+        titulo: 'Mareas',
+        descripcion:
+          'La variación del nivel del mar afecta profundidades, corrientes y zonas de acceso a lo largo del día.',
+        contenido: {
+          intro:
+            'Las mareas son el ascenso y descenso periódico del nivel del mar, producido principalmente por la atracción gravitacional de la Luna y el Sol. En el Golfo San Jorge, son un factor clave para entender el entorno costero.',
+          puntos: [
+            {
+              titulo: 'Pleamar y bajamar',
+              texto:
+                'La pleamar es el nivel máximo del agua; la bajamar, el mínimo. Entre ambos estados transcurren aproximadamente 6 horas. El ciclo se repite dos veces por día (mareas semidiurnas).'
+            },
+            {
+              titulo: 'Amplitud mareal',
+              texto:
+                'En el Golfo San Jorge, la diferencia entre pleamar y bajamar puede superar los 5 metros en algunos sectores, modificando significativamente las zonas accesibles y la extensión de playa.'
+            },
+            {
+              titulo: 'Efecto en corrientes',
+              texto:
+                'El cambio de marea genera corrientes que fluyen a lo largo y hacia afuera del mar. Durante la transición (marea vaciante), las corrientes pueden ser especialmente intensas.'
+            },
+            {
+              titulo: 'Zonas expuestas',
+              texto:
+                'Con marea baja se exponen rocas, pozas y fondos que en pleamar permanecen cubiertos. Estas zonas pueden ser resbaladizas y albergar fauna marina frágil.'
+            }
+          ],
+          nota: 'Las tablas de mareas locales indican el estado del mar para cada hora del día. Consultarlas antes de actividades costeras es una práctica recomendada.'
+        }
+      }
+    ]
+  },
+  {
+    id: 'viento',
+    titulo: 'El Viento',
+    icono: '💨',
+    temas: [
+      {
+        id: 'viento',
+        icono: '💨',
+        titulo: 'Viento en la costa',
+        descripcion:
+          'La dirección y velocidad del viento cambia las condiciones del mar y determina riesgos según cada actividad.',
+        contenido: {
+          intro:
+            'El viento es uno de los factores más influyentes en la costa. No solo genera oleaje: también determina corrientes superficiales, afecta la temperatura percibida y puede crear situaciones de riesgo para actividades en el agua.',
+          puntos: [
+            {
+              titulo: 'Viento hacia la costa (onshore)',
+              texto:
+                'Sopla desde el mar hacia la tierra. Genera olas que rompen con más frecuencia cerca de la orilla. Puede dificultar el ingreso al agua pero facilita el regreso. La temperatura percibida baja notablemente.'
+            },
+            {
+              titulo: 'Viento desde la costa (offshore)',
+              texto:
+                'Sopla desde la tierra hacia el mar. Puede parecer inofensivo pero representa un riesgo importante: arrastra hacia afuera colchonetas, flotadores y embarcaciones pequeñas, incluso a baja velocidad.'
+            },
+            {
+              titulo: 'Ráfagas',
+              texto:
+                'Son aumentos repentinos y breves de la velocidad del viento. En la Patagonia son frecuentes y pueden sorprender incluso cuando el viento base parecía moderado, amplificando el efecto de arrastre offshore.'
+            },
+            {
+              titulo: 'Viento en el Golfo San Jorge',
+              texto:
+                'La región presenta predominancia de vientos del oeste y suroeste, especialmente en primavera y verano. Su intensidad puede variar significativamente a lo largo del día.'
+            }
+          ],
+          nota: 'La percepción de viento suave desde la costa puede ser engañosa. A baja velocidad ya puede arrastrar flotadores o embarcaciones livianas lejos de la orilla.'
+        }
+      }
+    ]
+  },
+  {
+    id: 'senalizacion',
+    titulo: 'Señalización',
+    icono: '🚩',
+    temas: [
+      {
+        id: 'banderas',
+        icono: '🚩',
+        titulo: 'Banderas de guardavidas',
+        descripcion:
+          'Las banderas son el sistema de comunicación visual en playas con servicio de guardavidas. Reconocerlas es fundamental.',
+        contenido: {
+          intro:
+            'En las playas con servicio de guardavidas, las banderas son el principal medio de comunicación visual entre el personal y los bañistas. Su correcta interpretación puede marcar una diferencia importante.',
+          puntos: [
+            {
+              titulo: 'Bandera verde',
+              texto:
+                'Indica condiciones favorables para el baño y presencia activa del servicio de guardavidas. No implica ausencia de riesgos: el mar siempre requiere atención y observación.'
+            },
+            {
+              titulo: 'Bandera amarilla',
+              texto:
+                'Indica precaución. Puede señalar condiciones moderadas, zona con restricciones o presencia de factores a tener en cuenta. Ingresar con mayor prudencia y observar permanentemente el entorno.'
+            },
+            {
+              titulo: 'Bandera roja',
+              texto:
+                'Prohibición de ingreso al agua. Las condiciones representan riesgo para los bañistas. Esta señal debe respetarse siempre, sin excepciones.'
+            },
+            {
+              titulo: 'Bandera naranja (alargada)',
+              texto:
+                'Alerta por viento fuerte. Indica riesgo para embarcaciones pequeñas, flotadores y colchonetas. Especialmente relevante en días con viento offshore.'
+            },
+            {
+              titulo: 'Bandera a cuadros (negra y blanca)',
+              texto:
+                'Delimita zonas habilitadas para deportes acuáticos o surf, diferenciadas del área de baño general por razones de organización y convivencia.'
+            }
+          ],
+          nota: 'La presencia de guardavidas y el sistema de banderas varía según la playa y la temporada. Verificar siempre antes de ingresar al agua.'
+        }
+      }
+    ]
+  },
+  {
+    id: 'prevencion',
+    titulo: 'Prevención',
+    icono: '⚠️',
+    temas: [
+      {
+        id: 'precauciones',
+        icono: '⚠️',
+        titulo: 'Precauciones generales',
+        descripcion:
+          'Conocer el entorno costero patagónico y anticiparse a sus condiciones es la forma más efectiva de disfrutarlo.',
+        contenido: {
+          intro:
+            'La costa patagónica tiene características propias que la diferencian de otros entornos. La temperatura del agua, la amplitud mareal y los vientos frecuentes hacen que la preparación y la observación sean especialmente importantes.',
+          puntos: [
+            {
+              titulo: 'No ingresar solo al agua',
+              texto:
+                'Siempre es recomendable tener al menos otra persona presente que pueda asistir o pedir ayuda en caso necesario. Aplica tanto en playas habilitadas como en zonas naturales.'
+            },
+            {
+              titulo: 'Temperatura del agua',
+              texto:
+                'El agua del Golfo San Jorge es fría durante todo el año. El ingreso sin preparación puede provocar hiperventilación y reducir la capacidad de respuesta ante una situación imprevista.'
+            },
+            {
+              titulo: 'Flotadores y colchonetas',
+              texto:
+                'Con viento offshore, incluso suave, estos elementos pueden alejarse rápidamente de la orilla. No utilizarlos como apoyo para adentrarse en el mar y retirarlos si el viento aumenta.'
+            },
+            {
+              titulo: 'Respetar las indicaciones',
+              texto:
+                'Las señales, banderas y recomendaciones del personal de guardavidas se basan en el conocimiento del entorno local. Seguirlas contribuye a una experiencia más consciente para todos.'
+            },
+            {
+              titulo: 'Marea roja',
+              texto:
+                'En determinados períodos, floraciones de microalgas pueden hacer peligroso el consumo de mariscos y moluscos. Ante avisos de marea roja, no recolectar ni consumir estos organismos.'
+            }
+          ],
+          nota: 'Esta información tiene carácter educativo y preventivo. No reemplaza la evaluación en terreno ni las indicaciones de los organismos responsables de cada playa o zona costera.'
+        }
+      }
+    ]
+  }
+];
