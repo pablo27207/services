@@ -3,6 +3,7 @@
   import GridTemasCosta from './GridTemasCosta.svelte';
   import EscenariosCosta from './EscenariosCosta.svelte';
   import ChecklistCosta from './ChecklistCosta.svelte';
+  import BanderasPlaya from './BanderasPlaya.svelte';
   import AvisosNavegante from './AvisosNavegante.svelte';
 </script>
 
@@ -11,6 +12,7 @@
   <GridTemasCosta />
   <EscenariosCosta />
   <ChecklistCosta />
+  <BanderasPlaya />
   <AvisosNavegante /> 
 </section>
 

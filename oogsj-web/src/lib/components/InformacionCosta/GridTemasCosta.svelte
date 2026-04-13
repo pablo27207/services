@@ -2,17 +2,15 @@
   import { categoriasTemas } from './informacionCostaData.js';
   import { slide } from 'svelte/transition';
 
-  import OlasSVG from './svgs/OlasSVG.svelte';
-  import MareasSVG from './svgs/MareasSVG.svelte';
-  import VientoSVG from './svgs/VientoSVG.svelte';
-  import BanderasSVG from './svgs/BanderasSVG.svelte';
+  import OlasSVG       from './svgs/OlasSVG.svelte';
+  import MareasSVG     from './svgs/MareasSVG.svelte';
+  import VientoSVG     from './svgs/VientoSVG.svelte';
   import PrecaucionesSVG from './svgs/PrecaucionesSVG.svelte';
 
   const svgComponents = {
-    olas: OlasSVG,
-    mareas: MareasSVG,
-    viento: VientoSVG,
-    banderas: BanderasSVG,
+    olas:         OlasSVG,
+    mareas:       MareasSVG,
+    viento:       VientoSVG,
     precauciones: PrecaucionesSVG
   };
 
@@ -65,13 +63,8 @@
                 </div>
                 <span class="chevron" class:rotado={abierta} aria-hidden="true">
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path
-                      d="M5 7.5l5 5 5-5"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
+                    <path d="M5 7.5l5 5 5-5" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
                 </span>
               </div>
@@ -84,13 +77,18 @@
           <div class="panel" transition:slide={{ duration: 320 }}>
             <div class="panel-inner">
 
+              <!-- SVG: ancho completo, arriba -->
               <div class="panel-svg">
-                <svelte:component this={svgComponents[tema.id]} />
+                <svelte:component this={svgComponents[/** @type {keyof typeof svgComponents} */ (tema.id)]} />
               </div>
 
+              <!-- Contenido: título + intro + puntos 2 columnas -->
               <div class="panel-contenido">
-                <h4>{tema.titulo}</h4>
-                <p class="intro">{tema.contenido.intro}</p>
+
+                <div class="contenido-header">
+                  <h4>{tema.titulo}</h4>
+                  <p class="intro">{tema.contenido.intro}</p>
+                </div>
 
                 <ul class="puntos">
                   {#each tema.contenido.puntos as punto}
@@ -111,8 +109,8 @@
                     <p>{tema.contenido.nota}</p>
                   </div>
                 {/if}
-              </div>
 
+              </div>
             </div>
           </div>
         {/if}
@@ -213,10 +211,7 @@
     cursor: pointer;
     text-align: left;
     width: 100%;
-    transition:
-      box-shadow 0.25s ease,
-      border-color 0.25s ease,
-      transform 0.25s ease;
+    transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
     box-shadow: 0 8px 24px rgba(8, 37, 58, 0.06);
   }
 
@@ -249,10 +244,7 @@
     flex-shrink: 0;
   }
 
-  .card-texto {
-    flex: 1;
-    min-width: 0;
-  }
+  .card-texto { flex: 1; min-width: 0; }
 
   .card-texto h3 {
     margin: 0 0 0.3rem;
@@ -262,9 +254,7 @@
     transition: color 0.2s ease;
   }
 
-  .card.abierta .card-texto h3 {
-    color: #0d6ea8;
-  }
+  .card.abierta .card-texto h3 { color: #0d6ea8; }
 
   .card-texto p {
     margin: 0;
@@ -288,79 +278,87 @@
   }
 
   /* ─── Panel expandible ────────────────────────────── */
-  .panel {
-    overflow: hidden;
-  }
+  .panel { overflow: hidden; }
 
+  /* Layout: columna única — SVG arriba, contenido abajo */
   .panel-inner {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
     background: white;
     border: 1.5px solid rgba(13, 110, 168, 0.12);
     border-radius: 24px;
-    padding: 2rem;
+    padding: 1.75rem;
     box-shadow: 0 16px 40px rgba(8, 37, 58, 0.08);
   }
 
+  /* SVG: ancho completo, relación 700:280 (más panorámica, menos alta) */
   .panel-svg {
-    border-radius: 16px;
+    width: 100%;
+    aspect-ratio: 700 / 280;
+    border-radius: 14px;
     overflow: hidden;
     background: #f0f7fb;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 220px;
+    flex-shrink: 0;
   }
 
   .panel-svg :global(svg) {
     width: 100%;
-    height: auto;
+    height: 100%;
     display: block;
   }
 
-  /* ─── Contenido del panel ─────────────────────────── */
+  /* ─── Contenido: header + puntos 2 col + nota ─────── */
   .panel-contenido {
     display: flex;
     flex-direction: column;
-    gap: 1.2rem;
+    gap: 1rem;
+  }
+
+  .contenido-header {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0 1.5rem;
+    align-items: start;
   }
 
   .panel-contenido h4 {
     margin: 0;
-    font-size: 1.35rem;
+    font-size: 1.2rem;
     color: #0a2436;
     line-height: 1.2;
+    white-space: nowrap;
   }
 
   .intro {
     margin: 0;
     color: #4f6575;
-    line-height: 1.7;
-    font-size: 0.98rem;
+    line-height: 1.65;
+    font-size: 0.95rem;
   }
 
+  /* Puntos en grilla de 2 columnas */
   .puntos {
     list-style: none;
     margin: 0;
     padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.65rem;
   }
 
   .puntos li {
     display: flex;
     flex-direction: column;
     gap: 0.2rem;
-    padding: 0.9rem 1rem;
+    padding: 0.8rem 1rem;
     background: #f4f8fb;
-    border-radius: 14px;
+    border-radius: 12px;
     border-left: 3px solid #0d6ea8;
   }
 
   .puntos li strong {
-    font-size: 0.83rem;
+    font-size: 0.78rem;
     font-weight: 700;
     color: #0d6ea8;
     text-transform: uppercase;
@@ -368,9 +366,9 @@
   }
 
   .puntos li span {
-    font-size: 0.94rem;
+    font-size: 0.9rem;
     color: #415766;
-    line-height: 1.6;
+    line-height: 1.55;
   }
 
   .nota {
@@ -378,75 +376,49 @@
     gap: 0.65rem;
     align-items: flex-start;
     background: #eef6fb;
-    border-radius: 14px;
-    padding: 0.9rem 1rem;
-    margin-top: auto;
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
   }
 
-  .nota svg {
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
+  .nota svg { flex-shrink: 0; margin-top: 2px; }
 
   .nota p {
     margin: 0;
     color: #4f6575;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     line-height: 1.6;
     font-style: italic;
   }
 
   /* ─── Responsive ──────────────────────────────────── */
   @media (max-width: 900px) {
-    .cards-row.multi {
+    .cards-row.multi { grid-template-columns: 1fr; }
+
+    .contenido-header {
       grid-template-columns: 1fr;
+      gap: 0.5rem;
     }
 
-    .panel-inner {
-      grid-template-columns: 1fr;
-      gap: 1.5rem;
-      padding: 1.5rem;
-    }
+    .panel-contenido h4 { white-space: normal; }
   }
 
-  @media (max-width: 768px) {
-    .temas {
-      padding: 4rem 1rem 5rem;
-    }
+  @media (max-width: 640px) {
+    .temas { padding: 4rem 1rem 5rem; }
 
-    .card-inner {
-      padding: 1rem 1.25rem;
-      gap: 0.85rem;
-    }
+    .panel-inner { padding: 1.25rem; border-radius: 20px; gap: 1.25rem; }
 
-    .icono {
-      width: 48px;
-      height: 48px;
-      font-size: 1.4rem;
-      border-radius: 14px;
-    }
+    .panel-svg { aspect-ratio: 700 / 320; }
 
-    .card-texto h3 {
-      font-size: 0.98rem;
-    }
+    .card-inner { padding: 1rem 1.25rem; gap: 0.85rem; }
 
-    .card-texto p {
-      font-size: 0.88rem;
-    }
+    .icono { width: 48px; height: 48px; font-size: 1.4rem; border-radius: 14px; }
 
-    .panel-inner {
-      border-radius: 20px;
-      padding: 1.25rem;
-      gap: 1.25rem;
-    }
+    .card-texto h3 { font-size: 0.98rem; }
+    .card-texto p  { font-size: 0.88rem; }
 
-    .panel-contenido h4 {
-      font-size: 1.15rem;
-    }
+    /* Puntos a 1 columna en mobile chico */
+    .puntos { grid-template-columns: 1fr; }
 
-    .puntos li {
-      padding: 0.75rem 0.9rem;
-      border-radius: 12px;
-    }
+    .puntos li { padding: 0.7rem 0.85rem; border-radius: 10px; }
   }
 </style>

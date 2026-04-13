@@ -239,52 +239,6 @@ export const categoriasTemas = [
     ]
   },
   {
-    id: 'senalizacion',
-    titulo: 'Señalización',
-    icono: '🚩',
-    temas: [
-      {
-        id: 'banderas',
-        icono: '🚩',
-        titulo: 'Banderas de guardavidas',
-        descripcion:
-          'Las banderas son el sistema de comunicación visual en playas con servicio de guardavidas. Reconocerlas es fundamental.',
-        contenido: {
-          intro:
-            'En las playas con servicio de guardavidas, las banderas son el principal medio de comunicación visual entre el personal y los bañistas. Su correcta interpretación puede marcar una diferencia importante.',
-          puntos: [
-            {
-              titulo: 'Bandera verde',
-              texto:
-                'Indica condiciones favorables para el baño y presencia activa del servicio de guardavidas. No implica ausencia de riesgos: el mar siempre requiere atención y observación.'
-            },
-            {
-              titulo: 'Bandera amarilla',
-              texto:
-                'Indica precaución. Puede señalar condiciones moderadas, zona con restricciones o presencia de factores a tener en cuenta. Ingresar con mayor prudencia y observar permanentemente el entorno.'
-            },
-            {
-              titulo: 'Bandera roja',
-              texto:
-                'Prohibición de ingreso al agua. Las condiciones representan riesgo para los bañistas. Esta señal debe respetarse siempre, sin excepciones.'
-            },
-            {
-              titulo: 'Bandera naranja (alargada)',
-              texto:
-                'Alerta por viento fuerte. Indica riesgo para embarcaciones pequeñas, flotadores y colchonetas. Especialmente relevante en días con viento offshore.'
-            },
-            {
-              titulo: 'Bandera a cuadros (negra y blanca)',
-              texto:
-                'Delimita zonas habilitadas para deportes acuáticos o surf, diferenciadas del área de baño general por razones de organización y convivencia.'
-            }
-          ],
-          nota: 'La presencia de guardavidas y el sistema de banderas varía según la playa y la temporada. Verificar siempre antes de ingresar al agua.'
-        }
-      }
-    ]
-  },
-  {
     id: 'prevencion',
     titulo: 'Prevención',
     icono: '⚠️',
