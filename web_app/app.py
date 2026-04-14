@@ -3,7 +3,8 @@ from flask_mail import Mail
 from flasgger import Swagger
 
 import config
-from blueprints.avisos_bp import avisos_bp  
+from blueprints.avisos_bp import avisos_bp
+from blueprints.admin_bp  import admin_bp
 from blueprints.auth_bp     import auth_bp
 from blueprints.ocean_bp    import ocean_bp
 from blueprints.stations_bp import stations_bp
@@ -40,9 +41,11 @@ SWAGGER_CONFIG = {
     "specs_route": "/apidocs",
     "tags": [
         {"name": "Auth",      "description": "Autenticación y sesión"},
+        {"name": "Admin",     "description": "Panel de administración (requiere is_admin)"},
         {"name": "Ocean",     "description": "Mareógrafo, boya y predicción de marea"},
         {"name": "Stations",  "description": "Estaciones meteorológicas APPCR"},
         {"name": "Library",   "description": "Biblioteca científica y papers"},
+        {"name": "Avisos",    "description": "Avisos al navegante (SHN Argentina)"},
         {"name": "Contact",   "description": "Formulario de contacto y sugerencias"},
         {"name": "Files",     "description": "Archivos y documentos subidos"},
     ],
@@ -71,6 +74,7 @@ def create_app() -> Flask:
     app.register_blueprint(contact_bp)
     app.register_blueprint(files_bp)
     app.register_blueprint(avisos_bp)
+    app.register_blueprint(admin_bp)
 
     return app
 

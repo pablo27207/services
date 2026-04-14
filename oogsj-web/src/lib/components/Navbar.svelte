@@ -60,14 +60,14 @@
   
 
   <div class="navbar-end">
-    <button class="btn btn-ghost btn-circle">
+    <a href="/login" class="btn btn-ghost btn-circle" aria-label="Panel de administración">
       <div class="indicator">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M5.121 19.07A10.97 10.97 0 0112 16c2.7 0 5.18.98 7.121 2.93M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
       </div>
-    </button>
+    </a>
   </div>
 </div>
 

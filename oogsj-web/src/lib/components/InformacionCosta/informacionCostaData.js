@@ -81,45 +81,42 @@ export const escenariosCosta = [
 
 export const checklistCosta = [
   {
-    numero: '01',
+    numero: '1',
     titulo: 'Mirá la señalización del lugar',
     descripcion:
       'Antes de ingresar, observá cartelería, banderas y cualquier indicación visible en la zona.'
   },
   {
-    numero: '02',
+    numero: '2',
     titulo: 'Observá el viento',
     descripcion:
       'Detectá si el viento empuja hacia la playa o hacia mar adentro. Eso cambia mucho las condiciones.'
   },
   {
-    numero: '03',
+    numero: '3',
     titulo: 'Revisá el oleaje',
     descripcion:
       'Tomate unos minutos para mirar el comportamiento del mar antes de decidir ingresar.'
   },
   {
-    numero: '04',
+    numero: '4',
     titulo: 'Elegí zonas concurridas o vigiladas',
     descripcion:
       'Siempre es mejor priorizar sectores donde haya más presencia de personas o controles.'
   },
   {
-    numero: '05',
+    numero: '5',
     titulo: 'No ingreses solo',
     descripcion:
       'Entrar acompañado reduce riesgos y permite una mejor respuesta ante cualquier problema.'
   },
   {
-    numero: '06',
+    numero: '6',
     titulo: 'Prestá atención a cambios del entorno',
     descripcion:
       'El viento, el oleaje y la marea pueden cambiar. No des por estable una condición que ya cambió.'
   }
 ];
-
-// ─── AGREGAR este export al final de informacionCostaData.js ──────────────
-// Los exports existentes (temasCosta, escenariosCosta, checklistCosta) se mantienen intactos.
 
 export const categoriasTemas = [
   {

@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, make_response
 from core_auth import create_jwt, cookie_opts, current_user
 from db import get_db_connection
-from passlib.hash import bcrypt
+import bcrypt
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -27,7 +27,7 @@ def login():
     cur.close()
     conn.close()
 
-    if not row or not row[4] or not bcrypt.verify(password, row[4]):
+    if not row or not row[4] or not bcrypt.checkpw(password.encode(), row[4].encode()):
         return jsonify({"error": "Email o contraseña incorrectos"}), 401
 
     token = create_jwt({
