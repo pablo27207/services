@@ -39,6 +39,7 @@
   </div>
 
   <div class="navbar-center">
+    <a href="/" class="btn btn-ghost text-xl flex md:hidden">OOGSJ</a>
     <a href="/" class="btn btn-ghost text-xl hidden md:flex">OBSERVATORIO OCEANOGRÁFICO GOLFO SAN JORGE</a>
   </div>
 
