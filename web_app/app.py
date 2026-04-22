@@ -3,14 +3,16 @@ from flask_mail import Mail
 from flasgger import Swagger
 
 import config
-from blueprints.avisos_bp import avisos_bp
-from blueprints.admin_bp  import admin_bp
+from blueprints.avisos_bp   import avisos_bp
+from blueprints.admin_bp    import admin_bp
 from blueprints.auth_bp     import auth_bp
 from blueprints.ocean_bp    import ocean_bp
 from blueprints.stations_bp import stations_bp
 from blueprints.library_bp  import library_bp
 from blueprints.contact_bp  import contact_bp
 from blueprints.files_bp    import files_bp
+from blueprints.noticias_bp import noticias_bp
+from blueprints.especies_bp import especies_bp
 
 SWAGGER_CONFIG = {
     "title": "OOGSJ API",
@@ -46,6 +48,8 @@ SWAGGER_CONFIG = {
         {"name": "Stations",  "description": "Estaciones meteorológicas APPCR"},
         {"name": "Library",   "description": "Biblioteca científica y papers"},
         {"name": "Avisos",    "description": "Avisos al navegante (SHN Argentina)"},
+        {"name": "Noticias",  "description": "Noticias y novedades del observatorio"},
+        {"name": "Especies",  "description": "Catálogo de especies del Golfo San Jorge"},
         {"name": "Contact",   "description": "Formulario de contacto y sugerencias"},
         {"name": "Files",     "description": "Archivos y documentos subidos"},
     ],
@@ -75,6 +79,8 @@ def create_app() -> Flask:
     app.register_blueprint(files_bp)
     app.register_blueprint(avisos_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(noticias_bp)
+    app.register_blueprint(especies_bp)
 
     return app
 

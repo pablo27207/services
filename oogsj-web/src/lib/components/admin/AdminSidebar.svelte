@@ -38,10 +38,20 @@
     >
       <span class="nav-icon">📚</span> Biblioteca
     </a>
-    <span class="nav-item proximamente">
+    <a
+      href="/admin/noticias"
+      class="nav-item"
+      class:activo={currentPath.startsWith('/admin/noticias')}
+    >
       <span class="nav-icon">📰</span> Noticias
-      <span class="badge-soon">Próximo</span>
-    </span>
+    </a>
+    <a
+      href="/admin/especies"
+      class="nav-item"
+      class:activo={currentPath.startsWith('/admin/especies')}
+    >
+      <span class="nav-icon">🐟</span> Especies
+    </a>
   </nav>
 
   <div class="sidebar-footer">
@@ -112,23 +122,10 @@
     cursor: pointer;
   }
 
-  .nav-item:hover    { background: rgba(13,110,168,0.15); color: #cde8f5; }
-  .nav-item.activo   { background: rgba(13,110,168,0.25); color: #8fd3ff; font-weight: 600; }
-  .nav-item.proximamente { opacity: 0.5; cursor: default; }
+  .nav-item:hover  { background: rgba(13,110,168,0.15); color: #cde8f5; }
+  .nav-item.activo { background: rgba(13,110,168,0.25); color: #8fd3ff; font-weight: 600; }
 
   .nav-icon { font-size: 0.95rem; }
-
-  .badge-soon {
-    margin-left: auto;
-    font-size: 0.62rem;
-    font-weight: 700;
-    background: rgba(13,110,168,0.3);
-    color: #8fd3ff;
-    border-radius: 99px;
-    padding: 0.12rem 0.45rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
 
   .sidebar-footer {
     padding: 1rem 0.75rem 0;
