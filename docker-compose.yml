@@ -103,6 +103,13 @@ services:
     restart: always
     volumes:
       - ./web_app:/app
+    # ✅ Agregá este healthcheck (ajustá el endpoint si tenés uno dedicado)
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     networks:
       - oogsj_network
 
@@ -113,16 +120,25 @@ services:
     restart: always
     depends_on:
       - web_app
+    # ✅ Agregá healthcheck también si el frontend sirve contenido estático
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     networks:
       - oogsj_network
 
   nginx_proxy:
     image: nginx:latest
     container_name: nginx_proxy
+    # ✅ Esperar que los upstreams estén realmente listos
     depends_on:
-      - web_app
-      - api_ingestor
-      - frontend_oogsj
+      web_app:
+        condition: service_healthy
+      frontend_oogsj:
+        condition: service_healthy
     volumes:
       - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
       - ./oogsj-web/build:/usr/share/nginx/html:ro
