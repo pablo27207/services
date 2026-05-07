@@ -1,0 +1,248 @@
+================================================================================
+  INSTRUCCIONES DE DEPLOY — CORRECCIÓN UNIDADES SI (branch DeveloperFG)
+  Fecha: 2026-05-06
+  Autor: Franco Garcia
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ RESUMEN DEL PROBLEMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Los sensores meteorológicos de APPCR Muelle CC y APPCR Puerto CR tenían sus
+unit_id asignados incorrectamente en el init.sql original (los IDs estaban
+mezclados). Esto causaba que:
+
+  - wind_speed_avg y wind_speed_hi aparecieran con unidad "V" (Volts) en
+    lugar de "m/s"
+  - wind_dir_of_prevail y wind_dir_of_hi con "°F" en lugar de "°" (grados)
+  - rainfall_clicks y wind_num_samples con "Wh/m²" en lugar de "muestras"
+  - hum_out con "muestras" en lugar de "%"
+  - solar_rad_avg/hi con "mm" en lugar de "W/m²"
+  - solar_energy con "°F·d" en lugar de "Wh/m²"
+  - uv_dose con "inHg" en lugar de "mJ/cm²"
+  - uv_index_avg/hi con "mi" (millas) en lugar de "índice"
+  - deg_days_heat/cool con "m/s" en lugar de "°F·d"
+
+Los VALORES en la base de datos ya estaban en SI (el scraper convierte antes
+de insertar). Solo las etiquetas de unidad eran incorrectas.
+
+Adicionalmente, el endpoint /api/appcr/muelle_cc tenía conversiones
+hardcodeadas como si los valores vinieran en imperial (mph, °F), cuando el
+scraper ya los guardaba en SI. Esto hacía que la visualización mostrara
+valores incorrectos (ej. Temp In 18.56°C aparecía como -7.47°C).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ ARCHIVOS MODIFICADOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  NUEVOS (agregar al commit y al servidor):
+  ─────────────────────────────────────────
+  db_init/migrations/20260506_fix_sensor_units.sql
+      → Migración SQL para la BD de producción existente. Corrige los
+        unit_ids de 33 sensores en ambas plataformas. Agrega la unidad
+        W/m² (Vatios por metro cuadrado). SEGURA: no toca mediciones.
+
+  api_ingestor/services/csv_export_service.py
+      → Servicio que genera archivos CSV y TXT por plataforma y mes.
+        Siempre escribe los valores con las unidades que tenga la BD.
+
+  web_app/blueprints/exports_bp.py
+      → Endpoints REST para listar y descargar exports:
+          GET  /api/exports/          — lista archivos disponibles
+          GET  /api/exports/download/<ruta> — descarga un CSV
+          POST /api/exports/generate  — dispara generación manual (admin)
+
+  MODIFICADOS:
+  ────────────
+  db_init/init.sql
+      → Corregidos los 33 unit_ids incorrectos y agregada la unidad W/m².
+        Solo afecta a despliegues con base de datos NUEVA (docker compose
+        down -v && up). NO se ejecuta en producción con BD existente.
+
+  web_app/blueprints/stations_bp.py
+      → _VARIABLE_MAP_CC y _convert_cc corregidos:
+          - Temperaturas ya no se reconvierten (estaban en °C, se trataban
+            como °F causando valores imposibles).
+          - Velocidad del viento: usa m/s→km/h (×3.6) en vez de mph→km/h
+            (×1.609), que era el factor incorrecto.
+
+  api_ingestor/celery_tasks.py
+      → Agregadas dos tareas Celery para generación de exports:
+          - monthly_csv_export: corre el 1° de cada mes a las 00:00 UTC
+          - backfill_all_exports: genera el historial completo (manual)
+
+  docker-compose.yml
+      → Volumen ./exports:/app/exports montado en api_ingestor, worker,
+        beat y web_app para compartir los archivos generados.
+
+  web_app/app.py
+      → Registro del blueprint exports_bp.
+
+  web_app/config.py
+      → Variable EXPORTS_FOLDER con creación automática de directorio.
+
+  web_app/requirements.txt
+      → Agregado celery[redis] (necesario para encolar tareas desde web_app).
+
+  api_ingestor/services/caleta_muelle_scraper.py
+      → Corrección de comentario: unit_name de rain_rate_clicks era "Wh/m²",
+        ahora dice "mm/h" (solo documentación, sin impacto funcional).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ ¿CORROMPE LA BD DE PRODUCCIÓN? — NO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La migración es 100% segura:
+
+  ✔ Solo modifica la columna unit_id en la tabla oogsj_data.sensor
+  ✔ NUNCA toca la tabla oogsj_data.measurement (los valores son intocables)
+  ✔ El INSERT usa ON CONFLICT DO NOTHING (idempotente, ejecutar 2 veces no
+    causa error)
+  ✔ Los UPDATE usan el símbolo de unidad como lookup, no IDs hardcodeados
+  ✔ Todos los símbolos destino ya existen en la tabla unit (m/s, °, mm, %, etc.)
+  ✔ La migración es reversible: se puede deshacer con los unit_ids originales
+  ✔ Sin cambios de esquema (no ALTER TABLE, no DROP, no TRUNCATE)
+  ✔ Sin cambios en la tabla platform, variable, measurement ni quality_flag
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PASOS PARA SUBIR A PRODUCCIÓN (rama Main-Produccion)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  PASO 1 — Subir el branch y hacer merge
+  ───────────────────────────────────────
+  En tu máquina de desarrollo (cmd / PowerShell):
+
+    git add db_init/migrations/20260506_fix_sensor_units.sql
+    git add api_ingestor/services/csv_export_service.py
+    git add web_app/blueprints/exports_bp.py
+    git add db_init/init.sql
+    git add web_app/blueprints/stations_bp.py
+    git add api_ingestor/celery_tasks.py
+    git add docker-compose.yml
+    git add web_app/app.py
+    git add web_app/config.py
+    git add web_app/requirements.txt
+    git add api_ingestor/services/caleta_muelle_scraper.py
+
+    git commit -m "fix(units): corregir unit_ids SI en sensores APPCR y ajustar conversiones front-end"
+
+    git push origin DeveloperFG
+
+  Luego en GitHub:
+    → Crear Pull Request de DeveloperFG → Main-Produccion y hacer merge.
+
+  PASO 2 — En el servidor de producción
+  ───────────────────────────────────────
+  Conectarse por SSH al servidor y ejecutar:
+
+    cd /ruta/al/proyecto
+    git pull origin Main-Produccion
+
+  PASO 3 — Aplicar la migración sobre la BD existente
+  ──────────────────────────────────────────────────────
+  IMPORTANTE: init.sql NO corre automáticamente si la BD ya existe.
+  Hay que aplicar la migración manualmente:
+
+    # Opción A — pasando el archivo (más limpio)
+    docker compose exec db psql \
+      -U $POSTGRES_USER \
+      -d $POSTGRES_DB \
+      -f /docker-entrypoint-initdb.d/migrations/20260506_fix_sensor_units.sql
+
+    # Opción B — si el archivo no está montado en el contenedor db
+    docker compose exec -T db psql \
+      -U $POSTGRES_USER \
+      -d $POSTGRES_DB \
+      < db_init/migrations/20260506_fix_sensor_units.sql
+
+  Verificar que terminó sin errores: la salida debe mostrar solo
+  "INSERT 0 1" (o "INSERT 0 0" si W/m² ya existía) y múltiples "UPDATE N".
+
+  PASO 4 — Reconstruir y reiniciar los contenedores de aplicación
+  ────────────────────────────────────────────────────────────────
+    # Solo los servicios de aplicación (NO el db, que ya está corriendo)
+    docker compose up -d --build web_app api_ingestor worker beat
+
+  Esto instala las dependencias nuevas (celery[redis] en web_app) y monta
+  el volumen de exports.
+
+  PASO 5 — Regenerar los archivos CSV/TXT históricos con etiquetas correctas
+  ────────────────────────────────────────────────────────────────────────────
+  Los archivos ya existentes tienen valores correctos pero etiquetas de unidad
+  incorrectas. Para regenerarlos con las etiquetas correctas:
+
+    docker compose exec api_ingestor \
+      celery -A celery_tasks call celery_tasks.backfill_all_exports
+
+  Esto puede tardar entre 5 y 20 minutos dependiendo del volumen de datos.
+  El proceso se ejecuta en background; los servicios siguen funcionando
+  normalmente durante la regeneración.
+
+  PASO 6 — Verificación post-deploy
+  ────────────────────────────────────
+  Comprobar que todo está bien:
+
+    # Ver los últimos logs del worker para confirmar que no hay errores
+    docker compose logs --tail=50 worker
+
+    # Verificar la migración (las unidades deben ser correctas)
+    docker compose exec db psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
+      SELECT name, (SELECT symbol FROM oogsj_data.unit WHERE id = unit_id) AS unidad
+      FROM oogsj_data.sensor
+      WHERE platform_id IN (4, 5)
+      ORDER BY name;
+    "
+
+    # Verificar el endpoint de Muelle CC
+    curl http://localhost:5001/api/appcr/muelle_cc
+
+    # Verificar la lista de exports
+    curl http://localhost:5001/api/exports/
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ ROLLBACK (si algo falla)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Si la migración generara algún problema (poco probable), revertir las
+  unidades al estado anterior con este SQL:
+
+    -- Revertir Muelle CC (191512)
+    UPDATE oogsj_data.sensor SET unit_id = 8  WHERE name IN ('wind_speed_avg - 191512', 'wind_speed_hi - 191512');
+    UPDATE oogsj_data.sensor SET unit_id = 18 WHERE name IN ('wind_dir_of_hi - 191512', 'wind_dir_of_prevail - 191512');
+    UPDATE oogsj_data.sensor SET unit_id = 16 WHERE name IN ('rainfall_clicks - 191512', 'rain_rate_hi_clicks - 191512', 'wind_num_samples - 191512');
+    UPDATE oogsj_data.sensor SET unit_id = 9  WHERE name IN ('rainfall_mm - 191512', 'rain_rate_hi_mm - 191512', 'et - 191512');
+    UPDATE oogsj_data.sensor SET unit_id = 14 WHERE name = 'hum_out - 191512';
+    UPDATE oogsj_data.sensor SET unit_id = 12 WHERE name IN ('solar_rad_avg - 191512', 'solar_rad_hi - 191512');
+    UPDATE oogsj_data.sensor SET unit_id = 13 WHERE name = 'solar_energy - 191512';
+    UPDATE oogsj_data.sensor SET unit_id = 17 WHERE name = 'uv_dose - 191512';
+    UPDATE oogsj_data.sensor SET unit_id = 15 WHERE name IN ('uv_index_avg - 191512', 'uv_index_hi - 191512');
+    UPDATE oogsj_data.sensor SET unit_id = 9  WHERE name IN ('deg_days_heat - 191512', 'deg_days_cool - 191512');
+
+    -- Revertir Puerto CR (160710)
+    UPDATE oogsj_data.sensor SET unit_id = 8  WHERE name IN ('wind_speed - 160710', 'wind_speed_avg - 160710', 'wind_speed_hi - 160710');
+    UPDATE oogsj_data.sensor SET unit_id = 18 WHERE name IN ('wind_dir_of_hi - 160710', 'wind_dir_of_prevail - 160710');
+    UPDATE oogsj_data.sensor SET unit_id = 16 WHERE name IN ('rainfall_clicks - 160710', 'rain_rate_hi_clicks - 160710', 'wind_num_samples - 160710');
+    UPDATE oogsj_data.sensor SET unit_id = 9  WHERE name IN ('rainfall_mm - 160710', 'rain_rate_hi_mm - 160710', 'et - 160710');
+    UPDATE oogsj_data.sensor SET unit_id = 14 WHERE name = 'hum_out - 160710';
+    UPDATE oogsj_data.sensor SET unit_id = 9  WHERE name IN ('deg_days_heat - 160710', 'deg_days_cool - 160710');
+
+  Luego hacer git revert del commit en Main-Produccion y redesplegar.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ NOTAS ADICIONALES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• Los archivos CSV/TXT en api_ingestor/exports/ NO deben commitearse al
+  repositorio (son artefactos generados). Asegurarse de que esa carpeta
+  esté en .gitignore si no lo está.
+
+• La nueva tarea monthly_csv_export corre automáticamente el 1° de cada
+  mes a las 00:00 UTC. No requiere intervención manual.
+
+• El endpoint POST /api/exports/generate requiere autenticación de admin
+  y permite disparar una generación manual desde la interfaz web.
+
+• Los archivos TXT (formato pivotado) y CSV (formato largo) se generan
+  siempre juntos para cada plataforma y mes.
+
+================================================================================

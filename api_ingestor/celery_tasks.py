@@ -1,6 +1,8 @@
 from celery import Celery
+from celery.schedules import crontab
 from services.db_handler import DBHandler
 from services.task_config import TASKS
+from services.csv_export_service import CSVExportService
 
 app = Celery('tasks', broker='redis://cache:6379/0', backend='redis://cache:6379/0')
 
@@ -45,6 +47,37 @@ app.conf.beat_schedule = {
     }
     for task_name, config in TASKS.items()
 }
+
+@app.task(bind=True, name="celery_tasks.monthly_csv_export",
+          max_retries=2, default_retry_delay=300)
+def monthly_csv_export(self, year: int = None, month: int = None):
+    try:
+        results = CSVExportService.generate_all_platforms(year=year, month=month)
+        return {"status": "success", "files_generated": len(results), "paths": results}
+    except Exception as exc:
+        print(f"❌ Error en exportación mensual: {exc}")
+        raise self.retry(exc=exc, countdown=300)
+
+app.conf.beat_schedule["monthly_csv_export"] = {
+    "task":     "celery_tasks.monthly_csv_export",
+    "schedule": crontab(minute=0, hour=0, day_of_month=1),
+}
+
+
+@app.task(bind=True, name="celery_tasks.backfill_all_exports",
+          max_retries=1, default_retry_delay=600,
+          soft_time_limit=10800, time_limit=12600)
+def backfill_all_exports(self, start_year: int = None, start_month: int = None):
+    """Genera CSV y TXT históricos para todas las plataformas desde el inicio de los datos."""
+    try:
+        results = CSVExportService.backfill_all_months(
+            start_year=start_year, start_month=start_month
+        )
+        return {"status": "success", "files_generated": len(results), "paths": results}
+    except Exception as exc:
+        print(f"❌ Error en backfill: {exc}")
+        raise self.retry(exc=exc, countdown=600)
+
 app.conf.timezone                   = 'UTC'
 app.conf.task_acks_late             = True
 app.conf.worker_prefetch_multiplier = 1

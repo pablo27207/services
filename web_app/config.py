@@ -21,8 +21,11 @@ UPLOAD_FOLDER   = os.getenv("UPLOAD_FOLDER", "/app/uploads")
 ALLOWED_MIMES   = {"application/pdf"}
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
 
-# Crear carpeta si no existe
 Path(UPLOAD_FOLDER).mkdir(parents=True, exist_ok=True)
+
+# ── Exports ────────────────────────────────────────────────
+EXPORTS_FOLDER = os.getenv("EXPORT_DIR", "/app/exports")
+Path(EXPORTS_FOLDER).mkdir(parents=True, exist_ok=True)
 
 # ── Mail ───────────────────────────────────────────────────
 MAIL_SERVER         = os.getenv("MAIL_SERVER", "smtp.gmail.com")
