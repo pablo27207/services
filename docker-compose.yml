@@ -46,6 +46,7 @@ services:
     volumes:
       - ./api_ingestor:/app
       - ./logs:/app/logs
+      - ./exports:/app/exports
     restart: unless-stopped
     networks:
       - oogsj_network
@@ -67,6 +68,7 @@ services:
     volumes:
       - ./api_ingestor:/app
       - ./logs:/app/logs
+      - ./exports:/app/exports
     restart: always
     command: celery -A celery_tasks worker --loglevel=info
     networks:
@@ -87,6 +89,7 @@ services:
     volumes:
       - ./api_ingestor:/app
       - ./logs:/app/logs
+      - ./exports:/app/exports
     restart: always
     command: celery -A celery_tasks beat --loglevel=info
     networks:
@@ -103,6 +106,7 @@ services:
     restart: always
     volumes:
       - ./web_app:/app
+      - ./exports:/app/exports
     # ✅ Agregá este healthcheck (ajustá el endpoint si tenés uno dedicado)
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')"]

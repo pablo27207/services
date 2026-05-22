@@ -83,15 +83,15 @@ def _normalizar_unidad_y_valor(clave, unit, val):
 
 # ── Muelle CC helpers ──────────────────────────────────────
 _VARIABLE_MAP_CC = {
-    "Bar":                 {"key": "barometric_pressure", "label": "Presión barométrica",         "src": "hPa",    "dst": "hPa"},
-    "Dew Point Out":       {"key": "dew_point_outdoor",   "label": "Punto de rocío exterior",     "src": "°F",     "dst": "°C"},
-    "Heat Index Out":      {"key": "heat_index_outdoor",  "label": "Índice de calor exterior",    "src": "°F",     "dst": "°C"},
-    "Rainfall Clicks":     {"key": "rainfall",            "label": "Precipitación",               "src": "clicks", "dst": "mm"},
-    "Temp In":             {"key": "indoor_temperature",  "label": "Temperatura interior",        "src": "°F",     "dst": "°C"},
-    "Temp Out":            {"key": "outdoor_temperature", "label": "Temperatura exterior",        "src": "°F",     "dst": "°C"},
-    "Wind Chill":          {"key": "wind_chill",          "label": "Sensación térmica por viento","src": "°F",     "dst": "°C"},
+    "Bar":                 {"key": "barometric_pressure", "label": "Presión barométrica",         "src": "hPa",  "dst": "hPa"},
+    "Dew Point Out":       {"key": "dew_point_outdoor",   "label": "Punto de rocío exterior",     "src": "°C",   "dst": "°C"},
+    "Heat Index Out":      {"key": "heat_index_outdoor",  "label": "Índice de calor exterior",    "src": "°C",   "dst": "°C"},
+    "Rainfall Clicks":     {"key": "rainfall",            "label": "Precipitación",               "src": "clicks","dst": "mm"},
+    "Temp In":             {"key": "indoor_temperature",  "label": "Temperatura interior",        "src": "°C",   "dst": "°C"},
+    "Temp Out":            {"key": "outdoor_temperature", "label": "Temperatura exterior",        "src": "°C",   "dst": "°C"},
+    "Wind Chill":          {"key": "wind_chill",          "label": "Sensación térmica por viento","src": "°C",   "dst": "°C"},
     "Wind Dir Of Prevail": {"key": "wind_direction",      "label": "Dir. predominante del viento","src": "degrees","dst": "degrees"},
-    "Wind Speed Avg":      {"key": "wind_speed_avg",      "label": "Velocidad media del viento",  "src": "mph",    "dst": "km/h"},
+    "Wind Speed Avg":      {"key": "wind_speed_avg",      "label": "Velocidad media del viento",  "src": "m/s",  "dst": "km/h"},
 }
 
 
@@ -104,10 +104,8 @@ def _convert_cc(variable_name, raw):
     src, dst = cfg["src"], cfg["dst"]
     if src == dst:
         return round(raw, 2), "°" if src == "degrees" else dst
-    if src == "°F" and dst == "°C":
-        return round((raw - 32) * 5 / 9, 2), dst
-    if src == "mph" and dst == "km/h":
-        return round(raw * 1.60934, 2), dst
+    if src == "m/s" and dst == "km/h":
+        return round(raw * 3.6, 2), dst
     if src == "clicks" and dst == "mm":
         return round(raw * 0.2, 2), dst
     return round(raw, 2), dst

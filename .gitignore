@@ -42,6 +42,10 @@ celerybeat.pid
 # 📊 Datos
 data/
 *.csv
+*.dump
+
+# 📦 Exports generados (artefactos, no van al repo)
+api_ingestor/exports/
 # *.json
 *.xml
 *.rdf
