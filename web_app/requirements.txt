@@ -6,3 +6,4 @@ Flask-Mail
 passlib[bcrypt]
 PyJWT
 flasgger==0.9.7.1
+celery[redis]

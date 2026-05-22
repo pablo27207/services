@@ -1,0 +1,303 @@
+================================================================================
+  GUÍA: BACKFILL HISTÓRICO WEATHERLINK → BASE DE DATOS OOGSJ
+  Fecha: 2026-05-06
+================================================================================
+
+Esta guía cubre TRES pasos secuenciales que deben ejecutarse en orden:
+
+  PASO 1 — Aplicar migración de unidades a la BD de producción
+  PASO 2 — Ejecutar el backfill histórico de WeatherLink
+  PASO 3 — Verificar que los datos se insertaron correctamente
+
+Estaciones involucradas:
+  • APPCR Puerto CR   — station_id 160710
+  • APPCR Muelle CC   — station_id 191512
+
+Solo afecta las dos plataformas meteorológicas. NO toca otras plataformas,
+sensores de otras estaciones, ni ningún otro dato de la BD.
+
+================================================================================
+  PRE-REQUISITOS
+================================================================================
+
+Variables de entorno requeridas en el archivo .env del servidor:
+
+  POSTGRES_DB=<nombre_de_la_bd>
+  POSTGRES_USER=<usuario>
+  POSTGRES_PASSWORD=<contraseña>
+  POSTGRES_HOST=db
+  POSTGRES_PORT=5432
+
+  API_KEY_PUERTO=<tu_api_key_weatherlink_puerto_cr>
+  API_SECRET_PUERTO=<tu_api_secret_weatherlink_puerto_cr>
+
+  API_KEY_MUELLE=<tu_api_key_weatherlink_muelle_cc>
+  API_SECRET_MUELLE=<tu_api_secret_weatherlink_muelle_cc>
+
+Las credenciales de WeatherLink se obtienen en:
+  https://www.weatherlink.com/account → API Keys
+
+Verificar que los servicios Docker estén corriendo:
+  docker compose ps
+  # Deben estar UP: db, api_ingestor, worker, beat, web_app, cache
+
+================================================================================
+  PASO 1 — MIGRACIÓN DE UNIDADES (BD de producción)
+================================================================================
+
+Este paso corrige los unit_id incorrectos en la tabla sensor para las dos
+estaciones meteorológicas. NO modifica ningún valor en measurement.
+
+  docker compose exec db psql \
+    -U $POSTGRES_USER \
+    -d $POSTGRES_DB \
+    -f /docker-entrypoint-initdb.d/migrations/20260506_fix_sensor_units.sql
+
+Salida esperada (una línea por UPDATE/INSERT exitoso):
+  INSERT 0 0    ← W/m² ya existía o se insertó
+  UPDATE 2      ← wind_speed_avg, wind_speed_hi → m/s
+  UPDATE 2      ← wind_dir_of_hi, wind_dir_of_prevail → °
+  UPDATE 3      ← rainfall_clicks, rain_rate_hi_clicks, wind_num_samples → muestras
+  UPDATE 3      ← rainfall_mm, rain_rate_hi_mm, et → mm
+  UPDATE 1      ← hum_out → %
+  UPDATE 2      ← solar_rad_avg, solar_rad_hi → W/m²
+  UPDATE 1      ← solar_energy → Wh/m²
+  UPDATE 1      ← uv_dose → mJ/cm²
+  UPDATE 2      ← uv_index_avg, uv_index_hi → índice
+  UPDATE 2      ← deg_days_heat, deg_days_cool → °F·d
+  (más UPDATEs para station 160710...)
+
+Si un UPDATE muestra 0 filas modificadas no es error; significa que el sensor
+no existía aún (el backfill lo creará en el Paso 2).
+
+ROLLBACK de emergencia (solo si algo salió muy mal):
+  -- Restaurar unidades por defecto (usar con cuidado)
+  UPDATE oogsj_data.sensor SET unit_id = 8
+  WHERE name LIKE '%191512%' OR name LIKE '%160710%';
+
+================================================================================
+  PASO 2 — EJECUTAR EL BACKFILL HISTÓRICO
+================================================================================
+
+El script descarga día a día los últimos 3 años (1095 días) de cada estación
+desde la API histórica de WeatherLink e inserta los registros en la BD.
+
+  docker compose exec api_ingestor \
+    python backfill_historico_weatherlink.py
+
+TIEMPO ESTIMADO:
+  ~2 segundos por llamada API × 1095 días × 2 estaciones = ~73 minutos
+
+El script puede interrumpirse y volver a ejecutarse sin problema:
+  ON CONFLICT (sensor_id, timestamp) DO NOTHING
+  Los registros ya insertados se ignoran automáticamente.
+
+SALIDA NORMAL DEL SCRIPT (ejemplo):
+
+  08:00:01 INFO     🚀 Backfill histórico APPCR — iniciando
+  08:00:01 INFO        Rango: últimos 1095 días (3 años aprox.)
+  08:00:01 INFO        Delay entre llamadas API: 2.0s
+
+  08:00:01 INFO     =================================================================
+  08:00:01 INFO     📡  APPCR Puerto CR  (station 160710)
+  08:00:01 INFO     =================================================================
+  08:00:01 INFO       🔗 Resolviendo sensores en la BD...
+  08:00:03 INFO       ✔ 29/29 sensores resueltos en BD
+  08:00:05 INFO       ⏩ 2023-05-06 — buscando inicio de datos...
+  ...
+  08:05:10 INFO       📌 Primer día con datos: 2023-07-15
+  08:05:12 INFO       📅 2023-07-15 —   48 registros API | +1392 insertados |    0 ya existían
+  08:05:14 INFO       📅 2023-07-16 —   48 registros API | +1392 insertados |    0 ya existían
+  ...
+
+  INFO     ✅ APPCR Puerto CR completado: 285,000 insertados — 0 duplicados ignorados
+
+  INFO     =================================================================
+  INFO     📡  APPCR Muelle CC  (station 191512)
+  INFO     =================================================================
+  ...
+  INFO     ✅ APPCR Muelle CC completado: 340,000 insertados — 0 duplicados ignorados
+
+  INFO     🏁 Backfill completo para todas las estaciones
+
+ERRORES COMUNES Y SOLUCIÓN:
+
+  ❌ "Credenciales API ausentes"
+     → Verificar API_KEY_PUERTO/API_SECRET_PUERTO/API_KEY_MUELLE/API_SECRET_MUELLE en .env
+
+  ❌ "Plataforma 'APPCR Puerto CR' no encontrada en la BD"
+     → La BD no tiene la plataforma. Verificar que init.sql se ejecutó correctamente.
+
+  ⚠️  HTTP 429
+     → Rate limit de WeatherLink. El script espera automáticamente 60s y reintenta.
+
+  ⚠️  "No se pudo resolver sensor para 'campo'"
+     → Algún campo nuevo de WeatherLink no pudo crearse. Ver el log detallado.
+        Generalmente no es crítico.
+
+================================================================================
+  PASO 3 — VERIFICAR LOS DATOS INSERTADOS
+================================================================================
+
+Abrir psql en el contenedor de BD:
+  docker compose exec db psql -U $POSTGRES_USER -d $POSTGRES_DB
+
+--------------------------------------------------------------------------------
+3.1  Cantidad de registros por plataforma
+--------------------------------------------------------------------------------
+
+  SELECT p.name, COUNT(*) AS total_mediciones,
+         MIN(m.timestamp) AS primer_dato,
+         MAX(m.timestamp) AS ultimo_dato
+  FROM oogsj_data.measurement m
+  JOIN oogsj_data.sensor s ON m.sensor_id = s.id
+  JOIN oogsj_data.platform p ON s.platform_id = p.id
+  WHERE p.name IN ('APPCR Puerto CR', 'APPCR Muelle CC')
+  GROUP BY p.name
+  ORDER BY p.name;
+
+Resultado esperado (valores aproximados, dependen del período activo):
+
+  nombre             | total_mediciones | primer_dato         | ultimo_dato
+  -------------------+------------------+---------------------+---------------------
+  APPCR Muelle CC    |      350,000+    | 2023-xx-xx xx:xx:xx | 2026-05-05 xx:xx:xx
+  APPCR Puerto CR    |      280,000+    | 2023-xx-xx xx:xx:xx | 2026-05-05 xx:xx:xx
+
+--------------------------------------------------------------------------------
+3.2  Verificar unidades de sensores (deben estar en SI)
+--------------------------------------------------------------------------------
+
+  SELECT s.name AS sensor, v.name AS variable, u.symbol AS unidad
+  FROM oogsj_data.sensor s
+  JOIN oogsj_data.variable v ON s.variable_id = v.id
+  JOIN oogsj_data.unit u ON s.unit_id = u.id
+  WHERE s.name LIKE '%191512%' OR s.name LIKE '%160710%'
+  ORDER BY s.name;
+
+Valores CORRECTOS esperados por tipo de variable:
+
+  Variable de temperatura  → unidad: °C
+  Variable de viento       → unidad: m/s   (se muestra como km/h en exports)
+  Variable de dirección    → unidad: °
+  Variable de humedad      → unidad: %
+  Variable de presión      → unidad: hPa
+  Variable de lluvia (mm)  → unidad: mm
+  Variable de lluvia (clk) → unidad: muestras
+  Variable solar           → unidad: W/m²  o  Wh/m²
+  Variable UV              → unidad: índice o mJ/cm²
+
+--------------------------------------------------------------------------------
+3.3  Verificar valores promedio (¿son razonables?)
+--------------------------------------------------------------------------------
+
+  -- Promedios por variable para APPCR Puerto CR (últimos 30 días)
+  SELECT v.name, u.symbol,
+         ROUND(AVG(m.value)::numeric, 2) AS promedio,
+         ROUND(MIN(m.value)::numeric, 2) AS minimo,
+         ROUND(MAX(m.value)::numeric, 2) AS maximo,
+         COUNT(*) AS registros
+  FROM oogsj_data.measurement m
+  JOIN oogsj_data.sensor s ON m.sensor_id = s.id
+  JOIN oogsj_data.variable v ON s.variable_id = v.id
+  JOIN oogsj_data.unit u ON s.unit_id = u.id
+  JOIN oogsj_data.platform p ON s.platform_id = p.id
+  WHERE p.name = 'APPCR Puerto CR'
+    AND m.timestamp >= NOW() - INTERVAL '30 days'
+    AND m.quality_flag = 0
+  GROUP BY v.name, u.symbol
+  ORDER BY v.name;
+
+--------------------------------------------------------------------------------
+3.4  Rangos razonables por variable (referencia)
+--------------------------------------------------------------------------------
+
+  VARIABLE                UNIDAD   RANGO ESPERADO (Puerto CR / Muelle CC)
+  ─────────────────────────────────────────────────────────────────────────
+  Temperatura exterior    °C       10 – 38
+  Temperatura interior    °C       15 – 45  (más caliente en interiores)
+  Dew Point               °C       5  – 30
+  Heat Index              °C       10 – 50
+  Wind Chill              °C       5  – 35
+  Humedad exterior        %        30 – 100
+  Presión barométrica     hPa      990 – 1030
+  Velocidad del viento    m/s      0  – 20   (display: 0 – 72 km/h)
+  Wind Speed Hi           m/s      0  – 30   (display: 0 – 108 km/h)
+  Dirección del viento    °        0  – 360
+  Precipitación (mm)      mm       0  – 100  (diaria)
+  Radiación solar avg     W/m²     0  – 1200
+  Radiación solar hi      W/m²     0  – 1400
+  UV Index                índice   0  – 14
+  Energía solar           Wh/m²    0  – 8000 (diaria)
+
+  Si ves temperaturas de -100, 127, 255, 32767 o similares son CENTINELAS
+  de WeatherLink (dato inválido). El script los filtra, pero si quedaron
+  de ingestas anteriores tendrán quality_flag = 4 (Malo).
+
+--------------------------------------------------------------------------------
+3.5  Detectar registros centinela residuales
+--------------------------------------------------------------------------------
+
+  SELECT COUNT(*) AS centinelas_residuales
+  FROM oogsj_data.measurement m
+  JOIN oogsj_data.sensor s ON m.sensor_id = s.id
+  WHERE (s.name LIKE '%191512%' OR s.name LIKE '%160710%')
+    AND m.value IN (-1, 255, 32767, -32768, 32768);
+
+  Resultado esperado: 0
+  (Los datos del backfill tienen filtro sentinel. Solo podrían quedar
+  de ingestas antiguas del scraper original.)
+
+================================================================================
+  PASO 4 — REGENERAR CSV/TXT CON UNIDADES CORRECTAS (opcional)
+================================================================================
+
+Después del backfill, los archivos CSV y TXT históricos también pueden
+regenerarse con todos los datos nuevos y unidades correctas.
+
+Opción A — desde el contenedor api_ingestor (python):
+  docker compose exec api_ingestor python -c "
+  from services.csv_export_service import CSVExportService
+  CSVExportService.backfill_all_months()
+  "
+
+Opción B — vía tarea Celery (si el worker está activo):
+  docker compose exec worker celery -A celery_tasks call \
+    celery_tasks.backfill_all_exports
+
+Los archivos se generan en: api_ingestor/exports/<slug_plataforma>/<año>/
+Formato CSV: <año>_<mes>_<slug>.csv
+Formato TXT: <año>_<mes>_<slug>.txt  (pivotado, separador TAB)
+
+================================================================================
+  NOTAS IMPORTANTES
+================================================================================
+
+1. El backfill es IDEMPOTENTE. Puede ejecutarse múltiples veces sin
+   duplicar datos. ON CONFLICT DO NOTHING protege cada inserción.
+
+2. La BD NO se modifica en estructura. Solo se insertan filas en
+   oogsj_data.measurement y eventualmente nuevas variables/unidades/sensores.
+
+3. Los scrapers activos (comodoro_rivadavia_scraper.py y
+   caleta_cordova_scraper.py) siguen funcionando sin interrupción.
+   Los datos que ya insertan se ignorarán en el backfill (ON CONFLICT).
+
+4. Muelle CC (191512) puede mostrar datos congelados/repetidos en fechas
+   donde la estación física estuvo offline. Esto es normal y refleja
+   el estado real del hardware en esas fechas.
+
+5. WeatherLink solo retiene ~3 años de histórico en su API. Para períodos
+   anteriores se requiere acceso directo a los archivos descargados de
+   la estación (si existen).
+
+================================================================================
+  ARCHIVOS INVOLUCRADOS EN ESTA OPERACIÓN
+================================================================================
+
+  api_ingestor/backfill_historico_weatherlink.py   ← Script principal (NUEVO)
+  db_init/migrations/20260506_fix_sensor_units.sql ← Migración de unidades (NUEVO)
+  api_ingestor/services/csv_export_service.py      ← Exporta viento en km/h (MOD)
+  web_app/blueprints/stations_bp.py                ← Fix conversión frontend (MOD)
+  db_init/init.sql                                 ← Unidades corregidas (MOD)
+
+================================================================================

@@ -38,7 +38,7 @@ class WeatherCMScraper:
     # 'wind_chill' se mapea a 'wind_chill - 191512' (id 70)
     "wind_chill": {"sensor_id": 70, "unit_name": "°C", "is_sentinel": True},
     # 'rain_rate_clicks' se mapea a 'rainfall_clicks - 191512' (id 43)
-    "rain_rate_clicks": {"sensor_id": 43, "unit_name": "Wh/m²", "is_sentinel": False}
+    "rain_rate_clicks": {"sensor_id": 43, "unit_name": "mm/h", "is_sentinel": False}
 }
     # Crear un diccionario para mapear el sensor/variable a su unidad
     SENSOR_UNITS = {
