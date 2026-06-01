@@ -7,7 +7,8 @@ from services.caleta_cordova_scraper   import WeatherCCScraper
 from services.comodoro_rivadavia_scraper import WeatherCRScraper
 from services.caleta_muelle_scraper    import WeatherCMScraper
 from services.documentos_scraper       import ScientificDocScraper
-from services.shn_avisos_scraper       import SHNAvisosScraper   # ← NUEVO
+from services.shn_avisos_scraper       import SHNAvisosScraper
+from services.emac_cmd0_scraper        import EMACCMD0Scraper     # ← Estación CMD0 Caleta Córdova
 
 TASKS = {
     "buoy": {
@@ -34,8 +35,15 @@ TASKS = {
         "scraper":  ScientificDocScraper.fetch_data,
         "schedule": crontab(minute=17, hour=3),
     },
-    "shn_avisos": {                                   # ← NUEVO
+    "shn_avisos": {
         "scraper":  SHNAvisosScraper.fetch_avisos_data,
         "schedule": crontab(minute=0),                # cada hora
+    },
+    # Estación hidrometeorológica EMAC CMD0 – Caleta Córdova
+    # La API EMAC entrega histórico de 30 días; consultar cada 30 min
+    # equilibra frescura de datos con carga sobre el servidor EMAC.
+    "emac_cmd0_station": {
+        "scraper":  EMACCMD0Scraper.fetch_station_data,
+        "schedule": crontab(minute="*/30"),           # cada 30 minutos
     },
 }
