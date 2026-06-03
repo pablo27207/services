@@ -4,8 +4,6 @@ emac_cmd0_scraper.py
 Scraper para la estación hidrometeorológica CMD0 del sistema EMAC/CRIBA,
 ubicada en Caleta Córdova (-45.749189, -67.368762).
 
-Patrón idéntico al de BuoyScraper (misma fuente EMAC, mismo formato CSV).
-
 Variables que obtiene (últimos 30 días de cada endpoint):
   var_code=16 → Nivel del Agua           (m)
   var_code=13 → Temperatura del Agua     (°C)
@@ -14,28 +12,84 @@ Variables que obtiene (últimos 30 días de cada endpoint):
   var_code=03 → Velocidad del Viento     (km/h en API → m/s almacenado)
   var_code=02 → Dirección del Viento     (°)
 
-IDs de sensor esperados tras aplicar la migración
-20260601_add_emac_cmd0_station.sql sobre una BD limpia (init.sql):
-  78 → Nivel del Agua
-  79 → Temperatura del Agua
-  80 → Conductividad
-  81 → Temperatura del Aire
-  82 → Velocidad del Viento
-  83 → Dirección del Viento
-
-Si los IDs reales difieren (p.ej. porque se insertaron otros sensores antes),
-ejecutar la consulta de verificación que figura al final de la migración y
-actualizar el diccionario VARIABLES a continuación.
+Los sensor_id y location_id se resuelven dinámicamente desde la BD al
+momento de la ejecución, por lo que son independientes del entorno
+(desarrollo, producción, etc.).
 """
 
+import io
+
+import psycopg2
 import requests
 import pandas as pd
-import io
-from datetime import datetime
+
+from .config import DB_CONFIG
 
 
-# ── Constante de conversión de unidades ────────────────────────────────────
-_KMH_TO_MS = 1.0 / 3.6   # 1 km/h = 0.2778 m/s
+_KMH_TO_MS = 1.0 / 3.6
+
+# Mapeo: nombre del sensor (contenido en s.name) → (var_code, conversion_fn)
+_SENSOR_MAP = {
+    "Sensor de Nivel del Agua - CMD0":         ("16", None),
+    "Sensor de Temperatura del Agua - CMD0":   ("13", None),
+    "Sensor de Conductividad - CMD0":          ("17", None),
+    "Sensor de Temperatura del Aire - CMD0":   ("05", None),
+    "Sensor de Velocidad del Viento - CMD0":   ("03", lambda v: v * _KMH_TO_MS),
+    "Sensor de Dirección del Viento - CMD0":   ("02", None),
+}
+
+_PLATFORM_NAME = "Estación EMAC - Caleta Córdova CMD0"
+
+
+def _resolve_ids():
+    """
+    Consulta la BD y devuelve:
+      variables   → {var_code: (sensor_id, convert_fn)}
+      location_id → int
+
+    Lanza RuntimeError si la plataforma no existe o no tiene sensores.
+    """
+    conn = psycopg2.connect(**DB_CONFIG)
+    cur  = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT s.name, s.id
+            FROM oogsj_data.sensor s
+            JOIN oogsj_data.platform p ON p.id = s.platform_id
+            WHERE p.name = %s
+        """, (_PLATFORM_NAME,))
+        sensor_rows = cur.fetchall()
+
+        if not sensor_rows:
+            raise RuntimeError(
+                f"[CMD0] No se encontraron sensores para '{_PLATFORM_NAME}'. "
+                "Verificar que la migración 20260601_add_emac_cmd0_station.sql fue aplicada."
+            )
+
+        variables = {}
+        for sensor_name, sensor_id in sensor_rows:
+            if sensor_name in _SENSOR_MAP:
+                var_code, convert_fn = _SENSOR_MAP[sensor_name]
+                variables[var_code] = (sensor_id, convert_fn)
+
+        cur.execute("""
+            SELECT plh.id
+            FROM oogsj_data.platform_location_history plh
+            JOIN oogsj_data.platform p ON p.id = plh.platform_id
+            WHERE p.name = %s AND plh.end_time IS NULL
+            ORDER BY plh.start_time DESC
+            LIMIT 1
+        """, (_PLATFORM_NAME,))
+        row = cur.fetchone()
+        if not row:
+            raise RuntimeError(f"[CMD0] No se encontró location activa para '{_PLATFORM_NAME}'.")
+        location_id = row[0]
+
+    finally:
+        cur.close()
+        conn.close()
+
+    return variables, location_id
 
 
 class EMACCMD0Scraper:
@@ -44,108 +98,61 @@ class EMACCMD0Scraper:
     Retorna una lista de tuplas listas para insertar en oogsj_data.measurement.
     """
 
-    # URL base del servicio de históricos EMAC
-    BASE_URL = "http://emac.criba.edu.ar/servicios/getHistoryValues.php"
-
-    # Código de estación en el sistema EMAC
+    BASE_URL    = "http://emac.criba.edu.ar/servicios/getHistoryValues.php"
     STATION_CODE = "CMD0"
-
-    # Mapeo: var_code → (sensor_id, función de conversión o None)
-    #   - Los sensor_id corresponden a la migración 20260601_add_emac_cmd0_station.sql.
-    #   - La función de conversión se aplica sobre el valor crudo antes de guardar.
-    VARIABLES = {
-        "16": (197, None),                    # Nivel del Agua (m) — sin conversión
-        "13": (198, None),                    # Temperatura del Agua (°C) — sin conversión
-        "17": (199, None),                    # Conductividad (mS/cm) — sin conversión
-        "05": (200, None),                    # Temperatura del Aire (°C) — sin conversión
-        "03": (201, lambda v: v * _KMH_TO_MS),  # Vel. Viento km/h → m/s
-        "02": (202, None),                    # Dirección del Viento (°) — sin conversión
-    }
-
-    # ID de la ubicación en platform_location_history (entrada creada en la migración)
-    LOCATION_ID = 9
-
-    # Calidad 1 = "Bueno" (datos sin QC adicional; la fuente EMAC ya aplica QC básico)
-    QUALITY_FLAG = 1
-
-    # Nivel 1 = "Raw" (datos crudos del sensor; sin reprocesamiento adicional)
+    QUALITY_FLAG        = 1
     PROCESSING_LEVEL_ID = 1
 
     @staticmethod
     def fetch_station_data():
         """
-        Consulta el histórico de 30 días de cada variable en la API EMAC/CRIBA,
-        parsea el CSV que devuelve, aplica conversiones de unidades donde corresponde
-        y retorna una lista de tuplas con el formato esperado por DBHandler.insert_measurements().
+        Resuelve sensor IDs y location_id desde la BD, luego consulta la API
+        EMAC/CRIBA por cada variable y retorna las tuplas para inserción.
 
         Formato de cada tupla:
             (timestamp, value, quality_flag, processing_level_id, sensor_id, location_id)
-
-        Manejo de errores:
-            - Error HTTP: se logea y se continúa con la siguiente variable.
-            - Respuesta vacía o mal formada: se logea y se continúa.
-            - Valor NaN después de parseo: se descarta la fila.
         """
+        try:
+            variables, location_id = _resolve_ids()
+        except Exception as e:
+            print(f"[CMD0][ERROR BD] No se pudieron resolver IDs: {e}")
+            return []
+
         results = []
 
-        for var_code, (sensor_id, convert_fn) in EMACCMD0Scraper.VARIABLES.items():
-
-            # Construir URL para esta variable
+        for var_code, (sensor_id, convert_fn) in variables.items():
             url = (
                 f"{EMACCMD0Scraper.BASE_URL}"
                 f"?station_code={EMACCMD0Scraper.STATION_CODE}"
                 f"&var_code={var_code}"
             )
-
             try:
-                # ── Petición HTTP ────────────────────────────────────────────
                 response = requests.get(url, timeout=15)
-                response.raise_for_status()  # Lanza excepción en 4xx/5xx
+                response.raise_for_status()
 
-                # Verificar que la respuesta tenga contenido
                 if not response.text.strip():
                     raise ValueError("La API devolvió una respuesta vacía")
 
-                # ── Parseo del CSV ───────────────────────────────────────────
-                # El servicio EMAC retorna dos columnas sin encabezado explícito:
-                #   columna 0 → timestamp ISO o similar
-                #   columna 1 → valor numérico de la variable
                 df = pd.read_csv(io.StringIO(response.text), header=0)
 
-                # Validar que el CSV tiene al menos 2 columnas
                 if df.shape[1] < 2:
                     raise ValueError(
                         f"Formato CSV inesperado: se esperaban ≥2 columnas, "
                         f"se encontraron {df.shape[1]}"
                     )
 
-                # Renombrar columnas a nombres canónicos
                 df.columns = ["timestamp", "value"] + list(df.columns[2:])
-
-                # Parsear timestamp; filas con formato inválido → NaT → se descartan
                 df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
-
-                # Parsear valor numérico; texto no numérico → NaN → se descarta
-                df["value"] = pd.to_numeric(df["value"], errors="coerce")
-
-                # Descartar filas con timestamp o valor inválido
+                df["value"]     = pd.to_numeric(df["value"], errors="coerce")
                 df = df.dropna(subset=["timestamp", "value"])
 
                 if df.empty:
-                    print(
-                        f"[CMD0][WARN] var_code={var_code} sensor_id={sensor_id}: "
-                        f"sin datos válidos tras parseo"
-                    )
+                    print(f"[CMD0][WARN] var_code={var_code} sensor_id={sensor_id}: sin datos válidos tras parseo")
                     continue
 
-                # ── Conversión de unidades (si aplica) ──────────────────────
-                # Solo var_code=03 (viento en km/h) necesita conversión a m/s.
                 if convert_fn is not None:
                     df["value"] = df["value"].apply(convert_fn)
 
-                # ── Construcción de tuplas para inserción ────────────────────
-                # Formato: (timestamp, value, quality_flag, processing_level_id,
-                #           sensor_id, location_id)
                 tuples = [
                     (
                         row["timestamp"],
@@ -153,38 +160,24 @@ class EMACCMD0Scraper:
                         EMACCMD0Scraper.QUALITY_FLAG,
                         EMACCMD0Scraper.PROCESSING_LEVEL_ID,
                         sensor_id,
-                        EMACCMD0Scraper.LOCATION_ID,
+                        location_id,
                     )
                     for _, row in df.iterrows()
                 ]
                 results.extend(tuples)
-
-                print(
-                    f"[CMD0][OK] var_code={var_code} sensor_id={sensor_id}: "
-                    f"{len(tuples)} registros obtenidos"
-                )
+                print(f"[CMD0][OK] var_code={var_code} sensor_id={sensor_id}: {len(tuples)} registros obtenidos")
 
             except requests.exceptions.Timeout:
-                # El servidor EMAC no respondió en 15 segundos
                 print(f"[CMD0][ERROR HTTP] var_code={var_code} sensor_id={sensor_id}: timeout")
-
             except requests.exceptions.HTTPError as e:
-                # La API respondió con un código de error HTTP
                 print(f"[CMD0][ERROR HTTP] var_code={var_code} sensor_id={sensor_id}: {e}")
-
             except requests.exceptions.RequestException as e:
-                # Error de red genérico (DNS, conexión rechazada, etc.)
                 print(f"[CMD0][ERROR RED] var_code={var_code} sensor_id={sensor_id}: {e}")
-
             except ValueError as e:
-                # Datos mal formados o respuesta vacía
                 print(f"[CMD0][ERROR DATOS] var_code={var_code} sensor_id={sensor_id}: {e}")
-
             except Exception as e:
-                # Cualquier otro error inesperado no interrumpe el loop
                 print(f"[CMD0][ERROR INESPERADO] var_code={var_code} sensor_id={sensor_id}: {e}")
 
-        # Retorno vacío si todas las variables fallaron
         if not results:
             print("[CMD0][WARN] No se obtuvieron datos de ninguna variable.")
 
