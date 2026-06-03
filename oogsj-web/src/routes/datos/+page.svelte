@@ -7,6 +7,7 @@
   import GraficosBoya from '$lib/components/PlataformaGraficos/GraficosBoya.svelte';
   import EstacionCaleta from '$lib/components/PlataformaGraficos/EstacionCaleta.svelte';
   import EstacionPuerto from '$lib/components/PlataformaGraficos/EstacionPuerto.svelte';
+  import EstacionEMAC from '$lib/components/PlataformaGraficos/EstacionEMAC.svelte';
   import PlataformaNoHabilitada from '$lib/components/PlataformaGraficos/PlataformaNoHabilitada.svelte';
 
   let map;
@@ -61,6 +62,13 @@
           descripcion: "Mide el nivel del mar en tiempo real."
         }
       ]
+    },
+    {
+      nombre: "Estacion EMAC Caleta Cordova",
+      lat: -45.749189,
+      lon: -67.368762,
+      info: "Estación hidrometeorológica EMAC ubicada en Caleta Córdova. Monitorea nivel y temperatura del agua, conductividad, temperatura del aire, viento y dirección.",
+      imagen: "/imagenes/Plataformas/PuertoCaleta.jpg"
     }
   ];
 
@@ -226,6 +234,8 @@
           <GraficosMareografo />
         {:else if plataformaSeleccionada.nombre.toLowerCase().includes("boya")}
           <GraficosBoya />
+        {:else if plataformaSeleccionada.nombre.toLowerCase().includes("emac")}
+          <EstacionEMAC />
         {:else if plataformaSeleccionada.nombre.toLowerCase().includes("caleta")}
           <EstacionCaleta />
         {:else if plataformaSeleccionada.nombre.toLowerCase().includes("puerto")}
