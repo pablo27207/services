@@ -137,12 +137,16 @@ services:
   nginx_proxy:
     image: nginx:latest
     container_name: nginx_proxy
-    # ✅ Esperar que los upstreams estén realmente listos
+    # depends_on con service_started: nginx puede iniciar antes de que los upstreams
+    # estén completamente listos. Gracias al resolver 127.0.0.11 (DNS interno de Docker)
+    # en nginx.dev.conf, los upstreams se resuelven en tiempo de request, no al arrancar.
+    # Con service_healthy el contenedor nunca levantaba si el healthcheck de web_app
+    # o frontend_oogsj fallaba (curl no disponible, endpoint /health ausente, etc.).
     depends_on:
       web_app:
-        condition: service_healthy
+        condition: service_started
       frontend_oogsj:
-        condition: service_healthy
+        condition: service_started
     volumes:
       - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
       - ./oogsj-web/build:/usr/share/nginx/html:ro
