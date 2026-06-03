@@ -13,7 +13,8 @@ from blueprints.contact_bp  import contact_bp
 from blueprints.files_bp    import files_bp
 from blueprints.noticias_bp import noticias_bp
 from blueprints.especies_bp import especies_bp
-from blueprints.exports_bp  import exports_bp
+from blueprints.exports_bp    import exports_bp
+from blueprints.emac_cmd0_bp  import emac_cmd0_bp
 
 SWAGGER_CONFIG = {
     "title": "OOGSJ API",
@@ -54,6 +55,7 @@ SWAGGER_CONFIG = {
         {"name": "Contact",   "description": "Formulario de contacto y sugerencias"},
         {"name": "Files",     "description": "Archivos y documentos subidos"},
         {"name": "Exports",   "description": "Archivos CSV exportados por plataforma y mes"},
+        {"name": "EMAC",      "description": "Estación hidrometeorológica EMAC CMD0 - Caleta Córdova"},
     ],
 }
 
@@ -84,6 +86,7 @@ def create_app() -> Flask:
     app.register_blueprint(noticias_bp)
     app.register_blueprint(especies_bp)
     app.register_blueprint(exports_bp)
+    app.register_blueprint(emac_cmd0_bp)
 
     return app
 
