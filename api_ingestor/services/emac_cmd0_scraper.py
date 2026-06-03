@@ -54,16 +54,16 @@ class EMACCMD0Scraper:
     #   - Los sensor_id corresponden a la migración 20260601_add_emac_cmd0_station.sql.
     #   - La función de conversión se aplica sobre el valor crudo antes de guardar.
     VARIABLES = {
-        "16": (78, None),                    # Nivel del Agua (m) — sin conversión
-        "13": (79, None),                    # Temperatura del Agua (°C) — sin conversión
-        "17": (80, None),                    # Conductividad (mS/cm) — sin conversión
-        "05": (81, None),                    # Temperatura del Aire (°C) — sin conversión
-        "03": (82, lambda v: v * _KMH_TO_MS),  # Vel. Viento km/h → m/s
-        "02": (83, None),                    # Dirección del Viento (°) — sin conversión
+        "16": (197, None),                    # Nivel del Agua (m) — sin conversión
+        "13": (198, None),                    # Temperatura del Agua (°C) — sin conversión
+        "17": (199, None),                    # Conductividad (mS/cm) — sin conversión
+        "05": (200, None),                    # Temperatura del Aire (°C) — sin conversión
+        "03": (201, lambda v: v * _KMH_TO_MS),  # Vel. Viento km/h → m/s
+        "02": (202, None),                    # Dirección del Viento (°) — sin conversión
     }
 
     # ID de la ubicación en platform_location_history (entrada creada en la migración)
-    LOCATION_ID = 5
+    LOCATION_ID = 9
 
     # Calidad 1 = "Bueno" (datos sin QC adicional; la fuente EMAC ya aplica QC básico)
     QUALITY_FLAG = 1
