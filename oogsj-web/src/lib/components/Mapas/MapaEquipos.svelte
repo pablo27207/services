@@ -134,12 +134,14 @@
 
     const activas = ubicaciones.filter(esPlataformaActiva);
 
-    // Si por algún motivo no hay activas, evitamos romper y centramos en Comodoro aprox.
-    const center = activas.length
-      ? [activas[0].lat, activas[0].lon]
-      : [-45.86, -67.48];
+    map = L.map(mapElement);
 
-    map = L.map(mapElement).setView(center as any, 13);
+    if (activas.length) {
+      const bounds = L.latLngBounds(activas.map(u => [u.lat, u.lon]));
+      map.fitBounds(bounds, { padding: [50, 50] });
+    } else {
+      map.setView([-45.86, -67.48], 12);
+    }
 
     // === IGN por TMS (evita el "Bloqueado WMS") ===
     const ignLayer = L.tileLayer(

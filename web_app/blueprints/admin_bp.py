@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from flask import Blueprint, jsonify
 from core_auth import admin_required
 from db import get_db_connection
@@ -123,19 +125,39 @@ def get_plataformas():
             ORDER BY ultima_transmision DESC NULLS LAST;
         """)
         rows = cur.fetchall()
+
+        # Sensores por plataforma
+        cur.execute("""
+            SELECT platform_id, name
+            FROM oogsj_data.sensor
+            ORDER BY platform_id, name;
+        """)
+        sensor_rows = cur.fetchall()
     finally:
         cur.close()
         conn.close()
 
-    now_aware = __import__('datetime').datetime.utcnow()
+    # Agrupar sensores por plataforma
+    sensors_by_platform: dict[int, list[str]] = {}
+    for sr in sensor_rows:
+        pid, sname = sr[0], sr[1]
+        sensors_by_platform.setdefault(pid, []).append(sname)
+
+    now_utc = datetime.now(timezone.utc)
 
     plataformas = []
     for r in rows:
-        ultima_ts   = r[4]
+        ultima_ts = r[4]
         if ultima_ts:
-            # Calcular horas desde última transmisión
-            delta_h = (now_aware - ultima_ts).total_seconds() / 3600
-            if delta_h < 2:
+            # Normalizar a aware UTC para comparación segura
+            if ultima_ts.tzinfo is None:
+                ultima_ts = ultima_ts.replace(tzinfo=timezone.utc)
+            delta_h = (now_utc - ultima_ts).total_seconds() / 3600
+            # Timestamps futuros (predicciones de marea) → sin delta lógico
+            if delta_h < 0:
+                estado  = "ok"
+                delta_h = None
+            elif delta_h < 12:
                 estado = "ok"
             elif delta_h < 48:
                 estado = "alerta"
@@ -150,6 +172,7 @@ def get_plataformas():
             "nombre":             r[1],
             "tipo":               r[2],
             "sensores":           r[3],
+            "lista_sensores":     sensors_by_platform.get(r[0], []),
             "ultima_transmision": ultima_ts.isoformat() if ultima_ts else None,
             "horas_sin_datos":    round(delta_h, 1) if delta_h is not None else None,
             "total_mediciones":   r[5],

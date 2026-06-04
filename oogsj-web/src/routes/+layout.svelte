@@ -8,7 +8,7 @@
   
   <Navbar />
   
-  <div class="content relative z-10 overflow-visible">
+  <div class="content relative overflow-visible">
     <slot />
   </div>
   

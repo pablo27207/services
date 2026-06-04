@@ -52,6 +52,13 @@
     >
       <span class="nav-icon">🐟</span> Especies
     </a>
+    <a
+      href="/admin/exports"
+      class="nav-item"
+      class:activo={currentPath.startsWith('/admin/exports')}
+    >
+      <span class="nav-icon">📦</span> Exports
+    </a>
   </nav>
 
   <div class="sidebar-footer">

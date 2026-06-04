@@ -83,9 +83,10 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Error al subir');
       uploadOk = true;
-      resetForm();
+      limpiarCampos();
       await cargarDocs();
-      setTimeout(() => { uploadOk = false; }, 3000);
+      // Cerrar el modal después de mostrar el mensaje de éxito
+      setTimeout(() => { cerrarModal(); }, 2500);
     } catch (e: any) {
       uploadError = e?.message ?? 'Error al subir el documento';
     } finally {
@@ -93,10 +94,20 @@
     }
   }
 
-  function resetForm() {
+  function limpiarCampos() {
     titulo = ''; anio = ''; venue = ''; doi = ''; url = ''; autores = '';
     archivo = null;
+  }
+
+  function cerrarModal() {
+    limpiarCampos();
     modalAbierto = false;
+    uploadOk = false;
+    uploadError = '';
+  }
+
+  function resetForm() {
+    cerrarModal();
   }
 
   function prevPagina() { if (page > 1) { page--; cargarDocs(); } }
@@ -121,7 +132,7 @@
         <h1>Biblioteca</h1>
         <p>Gestión de documentos científicos · {total} documento{total !== 1 ? 's' : ''}</p>
       </div>
-      <button class="btn-subir" on:click={() => { modalAbierto = true; uploadError = ''; uploadOk = false; }}>
+      <button class="btn-subir" on:click={() => { limpiarCampos(); uploadError = ''; uploadOk = false; modalAbierto = true; }}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -209,11 +220,11 @@
 <!-- ══ Modal upload ══ -->
 {#if modalAbierto}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="modal-overlay" on:click|self={resetForm}>
+  <div class="modal-overlay" on:click|self={cerrarModal}>
     <div class="modal">
       <div class="modal-header">
         <h2>Subir documento</h2>
-        <button class="btn-cerrar" on:click={resetForm} aria-label="Cerrar">
+        <button class="btn-cerrar" on:click={cerrarModal} aria-label="Cerrar">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -268,7 +279,7 @@
         </div>
 
         <div class="modal-actions">
-          <button type="button" class="btn-cancelar" on:click={resetForm} disabled={uploading}>
+          <button type="button" class="btn-cancelar" on:click={cerrarModal} disabled={uploading}>
             Cancelar
           </button>
           <button type="submit" class="btn-confirmar" disabled={uploading}>

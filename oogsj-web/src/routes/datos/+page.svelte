@@ -9,6 +9,7 @@
   import EstacionPuerto from '$lib/components/PlataformaGraficos/EstacionPuerto.svelte';
   import EstacionEMAC from '$lib/components/PlataformaGraficos/EstacionEMAC.svelte';
   import PlataformaNoHabilitada from '$lib/components/PlataformaGraficos/PlataformaNoHabilitada.svelte';
+  import DescargaDatos from '$lib/components/datos/DescargaDatos.svelte';
 
   let map;
   let mapElement;
@@ -162,8 +163,10 @@
   onMount(() => {
     if (typeof window === 'undefined') return;
 
-    // Inicialización del mapa
-    map = L.map(mapElement).setView([plataformas[0].lat, plataformas[0].lon], 14);
+    // Inicialización del mapa con encuadre automático a todas las plataformas
+    map = L.map(mapElement);
+    const bounds = L.latLngBounds(plataformas.map(p => [p.lat, p.lon]));
+    map.fitBounds(bounds, { padding: [50, 50] });
 
     // Capa base IGN por TMS
     const ignLayer = L.tileLayer(
@@ -209,6 +212,8 @@
   });
 </script>
 
+<div class="datos-page">
+
 <div class="map-wrapper">
   <div id="map" bind:this={mapElement}></div>
 
@@ -252,23 +257,33 @@
   {/if}
 </div>
 
+<DescargaDatos />
+
+</div>
+
 <style>
+  /* =========================================================
+     CONTENEDOR GENERAL
+     ========================================================= */
+  .datos-page {
+    display: flex;
+    flex-direction: column;
+  }
+
   /* =========================================================
      MAPA
      ========================================================= */
   .map-wrapper {
     position: relative;
-    width: 100vw;
-    max-width: none;
+    width: 100%;
     height: calc(100vh - 70px);
-    margin: 0;
+    min-height: 480px;
     z-index: 0;
   }
 
   #map {
     width: 100%;
     height: 100%;
-    margin: 0;
     z-index: 0;
   }
 
