@@ -9,11 +9,12 @@
   let expandidas  = {};
 
   const NOMBRES = {
-    appcr_puerto_cr:                       'Estación Met. Puerto CR',
-    appcr_muelle_cc:                       'Estación Met. Muelle CC',
-    boya_cidmar_2:                         'Boya CIDMAR-2',
-    mareografo_puerto_comodoro_rivadavia:  'Mareógrafo Puerto Comodoro Rivadavia',
-    prediccion_de_marea_hidrografia_naval: 'Predicción de Marea – Hidrografía Naval',
+    appcr_puerto_cr:                        'Estación Met. Puerto CR',
+    appcr_muelle_cc:                        'Estación Met. Muelle CC',
+    boya_cidmar_2:                          'Boya CIDMAR-2',
+    mareografo_puerto_comodoro_rivadavia:   'Mareógrafo Puerto Comodoro Rivadavia',
+    prediccion_de_marea_hidrografia_naval:  'Predicción de Marea – Hidrografía Naval',
+    estacion_emac_caleta_cordova_cmd0:      'Estación EMAC – Caleta Córdova CMD0',
   };
 
   const MESES = [
