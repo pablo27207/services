@@ -67,6 +67,21 @@
       sensores: [
         { nombre: "abs_press", tipo: "Altura de ola", imagen: "/imagenes/Sensores/presion.png", descripcion: "Mide altura respecto respecto al nivel del mar." }
       ]
+    },
+    {
+      nombre: "Estacion EMAC Caleta Cordova",
+      lat: -45.749189,
+      lon: -67.368762,
+      info: "Estación hidrometeorológica EMAC ubicada en Caleta Córdova. Monitorea nivel y temperatura del agua, conductividad, temperatura del aire y condiciones de viento.",
+      imagen: "/imagenes/Plataformas/PuertoCaleta.jpg",
+      sensores: [
+        { nombre: "water_level",       tipo: "Nivel del Agua",        imagen: "/imagenes/Sensores/presion.png",         descripcion: "Mide el nivel del agua en metros." },
+        { nombre: "water_temperature", tipo: "Temperatura del Agua",  imagen: "/imagenes/Sensores/temperatura.png",     descripcion: "Mide la temperatura del agua en °C." },
+        { nombre: "conductivity",      tipo: "Conductividad",         imagen: "/imagenes/Sensores/humedad.png",         descripcion: "Mide la conductividad eléctrica del agua en mS/cm." },
+        { nombre: "air_temperature",   tipo: "Temperatura del Aire",  imagen: "/imagenes/Sensores/temperatura.png",     descripcion: "Mide la temperatura del aire exterior en °C." },
+        { nombre: "wind_speed",        tipo: "Velocidad del Viento",  imagen: "/imagenes/Sensores/anemometro-foto.jpg", descripcion: "Mide la velocidad del viento en km/h." },
+        { nombre: "wind_direction",    tipo: "Dirección del Viento",  imagen: "/imagenes/Sensores/corriente_direccion.png", descripcion: "Indica la dirección del viento en grados." }
+      ]
     }
   ];
 
@@ -82,7 +97,8 @@
       nombre.includes('estacion') ||
       nombre.includes('estación') ||
       nombre.includes('mareografo') ||
-      nombre.includes('mareógrafo');
+      nombre.includes('mareógrafo') ||
+      nombre.includes('emac');
 
     const noEsFutura = !nombre.includes('futura');
     const tieneSensores = Array.isArray(u?.sensores) && u.sensores.length > 0;
@@ -96,6 +112,7 @@
 
     if (nombre.includes('boya')) return '/icons/boya.png';
     if (nombre.includes('mareografo') || nombre.includes('mareógrafo')) return '/icons/mareografo.png';
+    if (nombre.includes('emac')) return '/icons/estacion.png';
     if (nombre.includes('estacion') || nombre.includes('estación')) return '/icons/estacion.png';
 
     // Fallback por si entra algo raro
@@ -117,12 +134,14 @@
 
     const activas = ubicaciones.filter(esPlataformaActiva);
 
-    // Si por algún motivo no hay activas, evitamos romper y centramos en Comodoro aprox.
-    const center = activas.length
-      ? [activas[0].lat, activas[0].lon]
-      : [-45.86, -67.48];
+    map = L.map(mapElement);
 
-    map = L.map(mapElement).setView(center as any, 13);
+    if (activas.length) {
+      const bounds = L.latLngBounds(activas.map(u => [u.lat, u.lon]));
+      map.fitBounds(bounds, { padding: [50, 50] });
+    } else {
+      map.setView([-45.86, -67.48], 12);
+    }
 
     // === IGN por TMS (evita el "Bloqueado WMS") ===
     const ignLayer = L.tileLayer(

@@ -1,8 +1,11 @@
 <script>
+  import { onMount } from 'svelte';
   import PanelVariablesEstaciones from './PanelVariablesEstaciones.svelte';
   import EstacionPuertoVisualizacionDatos from '../datos/EstacionPuertoVisualizacionDatos.svelte';
+  import MantenimientoBanner from './MantenimientoBanner.svelte';
 
-  // Configuración base de la estación meteorológica del puerto.
+  const PLATFORM_ID = 4;
+
   const estacion = {
     nombre: "Puerto Comodoro Rivadavia",
     lat: -45.86222,
@@ -10,7 +13,6 @@
     info: "Estación meteorológica ubicada en el Puerto de Comodoro Rivadavia."
   };
 
-  // Íconos por variable visible en el panel superior.
   const iconosPuerto = {
     barometric_pressure: "/iconosPaginaDatos/PresionBarometrica.png",
     outdoor_humidity: "/iconosPaginaDatos/HumedadExterior.png",
@@ -18,20 +20,41 @@
     wind_speed: "/iconosPaginaDatos/VelocidadDeViento2.png"
   };
 
-  // Orden y selección de variables principales para el resumen superior.
   const variablesPuerto = [
     "barometric_pressure",
     "outdoor_humidity",
     "outdoor_temperature",
     "wind_speed"
   ];
+
+  let enMantenimiento = false;
+  let mensajeMantenimiento = '';
+  let estadoCargando = true;
+
+  onMount(async () => {
+    try {
+      const res = await fetch(`/api/plataforma/${PLATFORM_ID}/estado`);
+      const data = await res.json();
+      enMantenimiento = data.en_mantenimiento ?? false;
+      mensajeMantenimiento = data.mensaje ?? '';
+    } catch {
+      enMantenimiento = false;
+    } finally {
+      estadoCargando = false;
+    }
+  });
 </script>
 
-<PanelVariablesEstaciones
-  endpoint="/api/appcr/puerto"
-  titulo={estacion.nombre}
-  iconosVariables={iconosPuerto}
-  variablesVisibles={variablesPuerto}
-/>
-
-<EstacionPuertoVisualizacionDatos />
+{#if estadoCargando}
+  <!-- espera silenciosa -->
+{:else if enMantenimiento}
+  <MantenimientoBanner mensaje={mensajeMantenimiento} />
+{:else}
+  <PanelVariablesEstaciones
+    endpoint="/api/appcr/puerto"
+    titulo={estacion.nombre}
+    iconosVariables={iconosPuerto}
+    variablesVisibles={variablesPuerto}
+  />
+  <EstacionPuertoVisualizacionDatos />
+{/if}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { goto } from '$app/navigation';
   import { authStore, type AdminUser } from '$lib/stores/auth';
   import AdminSidebar from '$lib/components/admin/AdminSidebar.svelte';
 
@@ -13,9 +14,12 @@
 
   type Plataforma = {
     id: number; nombre: string; tipo: string; sensores: number;
+    lista_sensores: string[];
     ultima_transmision: string | null; horas_sin_datos: number | null;
     total_mediciones: number; mediciones_24h: number;
     estado: 'ok' | 'alerta' | 'sin_datos';
+    en_mantenimiento: boolean;
+    maintenance_message: string | null;
   };
 
   // ── estado ───────────────────────────────────────────────
@@ -24,6 +28,8 @@
   let plats: Plataforma[]    = [];
   let cargando               = true;
   let errorMsg               = '';
+  let expandedPlatId: number | null = null;
+  let toggling: number | null = null;
 
   const unsub = authStore.subscribe(s => { user = s.user; });
 
@@ -59,9 +65,44 @@
 
   function fmtHoras(h: number | null): string {
     if (h == null) return '—';
-    if (h < 1) return `${Math.round(h * 60)} min`;
+    if (h < 0)  return '—';
+    if (h < 1)  return `${Math.round(h * 60)} min`;
     if (h < 24) return `${h.toFixed(0)} h`;
     return `${(h / 24).toFixed(1)} días`;
+  }
+
+  $: platsAlerta = plats.filter(p => p.estado === 'alerta' || p.estado === 'sin_datos');
+
+  function toggleSensores(id: number) {
+    expandedPlatId = expandedPlatId === id ? null : id;
+  }
+
+  async function toggleMantenimiento(p: Plataforma) {
+    toggling = p.id;
+    try {
+      const nuevoModo = !p.en_mantenimiento;
+      const res = await fetch(`/api/admin/plataformas/${p.id}/mantenimiento`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          maintenance_mode: nuevoModo,
+          maintenance_message: nuevoModo
+            ? (p.maintenance_message || 'Plataforma temporalmente fuera de servicio por mantenimiento.')
+            : null
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        plats = plats.map(pl =>
+          pl.id === p.id
+            ? { ...pl, en_mantenimiento: data.en_mantenimiento, maintenance_message: data.maintenance_message }
+            : pl
+        );
+      }
+    } finally {
+      toggling = null;
+    }
   }
 
   onMount(() => { cargarDatos(); });
@@ -109,6 +150,19 @@
       </div>
     {:else}
 
+      <!-- ── Alerta 12 horas ── -->
+      {#if platsAlerta.length > 0}
+        <div class="alerta-banner">
+          <span class="alerta-icon">⚠️</span>
+          <div class="alerta-texto">
+            <strong>Atención:</strong>
+            {platsAlerta.length === 1
+              ? `La plataforma "${platsAlerta[0].nombre}" no reporta datos o está en alerta.`
+              : `${platsAlerta.length} plataformas sin datos recientes o en alerta: ${platsAlerta.map(p => p.nombre).join(', ')}.`}
+          </div>
+        </div>
+      {/if}
+
       <!-- ── Stat cards ── -->
       <div class="cards-grid">
         <div class="stat-card">
@@ -138,11 +192,11 @@
           </div>
         </div>
 
-        <div class="stat-card">
+        <div class="stat-card avisos-card">
           <div class="stat-icon">⚠️</div>
           <div class="stat-body">
             <span class="stat-label">Avisos navegante</span>
-            <span class="stat-value">{fmtNum(stats?.avisos.ultimos_30d)}</span>
+            <span class="stat-value avisos-value">{fmtNum(stats?.avisos.ultimos_30d)}</span>
             <span class="stat-sub">Últimos 30 días · {fmtNum(stats?.avisos.total)} total</span>
           </div>
         </div>
@@ -170,7 +224,7 @@
       <section class="seccion">
         <h2 class="seccion-titulo">
           <span>📡</span> Estado de plataformas
-          <span class="seccion-sub">Última transmisión por plataforma</span>
+          <span class="seccion-sub">Alerta si sin datos &gt; 12 h · Expandí la fila para ver sensores</span>
         </h2>
 
         <div class="plats-table-wrap">
@@ -180,6 +234,7 @@
                 <th>Plataforma</th>
                 <th>Tipo</th>
                 <th>Estado</th>
+                <th>Mantenimiento</th>
                 <th>Última transmisión</th>
                 <th>Tiempo sin datos</th>
                 <th>Últ. 24 h</th>
@@ -189,8 +244,16 @@
             </thead>
             <tbody>
               {#each plats as p}
-                <tr>
-                  <td class="plat-nombre">{p.nombre}</td>
+                <tr
+                  class="fila-plataforma"
+                  class:fila-expandida={expandedPlatId === p.id}
+                  on:click={() => toggleSensores(p.id)}
+                  title="Clic para ver / ocultar sensores"
+                >
+                  <td class="plat-nombre">
+                    <span class="expand-arrow" class:open={expandedPlatId === p.id}>▶</span>
+                    {p.nombre}
+                  </td>
                   <td class="plat-tipo">{p.tipo}</td>
                   <td>
                     <span class="estado-badge estado-{p.estado}">
@@ -200,14 +263,53 @@
                       {/if}
                     </span>
                   </td>
+                  <td on:click|stopPropagation class="td-mantenimiento">
+                    <button
+                      class="btn-toggle-mant"
+                      class:activo={p.en_mantenimiento}
+                      disabled={toggling === p.id}
+                      on:click={() => toggleMantenimiento(p)}
+                      title={p.en_mantenimiento ? 'Quitar modo mantenimiento' : 'Activar mantenimiento'}
+                    >
+                      {#if toggling === p.id}
+                        ⏳
+                      {:else if p.en_mantenimiento}
+                        🔧 En mantenimiento
+                      {:else}
+                        Activar
+                      {/if}
+                    </button>
+                  </td>
                   <td class="ts-cell">{fmtTs(p.ultima_transmision)}</td>
                   <td class="td-right {p.estado !== 'ok' ? 'texto-alerta' : ''}">
                     {fmtHoras(p.horas_sin_datos)}
                   </td>
                   <td class="td-right">{fmtNum(p.mediciones_24h)}</td>
                   <td class="td-right">{fmtNum(p.total_mediciones)}</td>
-                  <td class="td-right">{p.sensores}</td>
+                  <td class="td-right td-sensores">
+                    <span class="sensores-badge">{p.sensores}</span>
+                  </td>
                 </tr>
+
+                <!-- Fila expandible con lista de sensores -->
+                {#if expandedPlatId === p.id}
+                  <tr class="fila-sensores">
+                    <td colspan="9">
+                      <div class="sensores-panel">
+                        <span class="sensores-titulo">Sensores de {p.nombre}</span>
+                        {#if p.lista_sensores && p.lista_sensores.length > 0}
+                          <div class="sensores-lista">
+                            {#each p.lista_sensores as s}
+                              <span class="sensor-chip">{s}</span>
+                            {/each}
+                          </div>
+                        {:else}
+                          <span class="sin-sensores">Sin información de sensores</span>
+                        {/if}
+                      </div>
+                    </td>
+                  </tr>
+                {/if}
               {/each}
             </tbody>
           </table>
@@ -217,22 +319,28 @@
       <!-- ── Último aviso ── -->
       {#if stats?.avisos.ultimo}
         <section class="seccion">
-          <h2 class="seccion-titulo">
-            <span>📋</span> Último aviso al navegante scrapeado
+          <h2 class="seccion-titulo aviso-titulo">
+            <span>📋</span> Último aviso al navegante
           </h2>
-          <div class="aviso-card">
-            <div class="aviso-row">
-              <span class="aviso-label">Número</span>
-              <span class="aviso-val">{stats.avisos.ultimo.numero}</span>
+          <div class="aviso-card-grande">
+            <div class="aviso-numero-badge">N° {stats.avisos.ultimo.numero}</div>
+            <div class="aviso-info-grid">
+              <div class="aviso-row">
+                <span class="aviso-label">Fecha del aviso</span>
+                <span class="aviso-val">{fmtTs(stats.avisos.ultimo.fecha)}</span>
+              </div>
+              <div class="aviso-row">
+                <span class="aviso-label">Scrapeado en</span>
+                <span class="aviso-val">{fmtTs(stats.avisos.ultimo.scraped_at)}</span>
+              </div>
+              <div class="aviso-row">
+                <span class="aviso-label">Total últimos 30 días</span>
+                <span class="aviso-val aviso-count">{fmtNum(stats.avisos.ultimos_30d)} avisos</span>
+              </div>
             </div>
-            <div class="aviso-row">
-              <span class="aviso-label">Fecha del aviso</span>
-              <span class="aviso-val">{fmtTs(stats.avisos.ultimo.fecha)}</span>
-            </div>
-            <div class="aviso-row">
-              <span class="aviso-label">Scrapeado en</span>
-              <span class="aviso-val">{fmtTs(stats.avisos.ultimo.scraped_at)}</span>
-            </div>
+            <a href="/costa-segura" target="_blank" class="btn-ver-avisos">
+              Ver avisos públicos →
+            </a>
           </div>
         </section>
       {/if}
@@ -339,6 +447,26 @@
     font-size: 0.88rem;
   }
 
+  /* ── Alerta banner ── */
+  .alerta-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    background: #fff8e6;
+    border: 1.5px solid #f6c94e;
+    border-radius: 14px;
+    padding: 0.9rem 1.25rem;
+    color: #7a4f00;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .alerta-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 0.05rem; }
+  .alerta-texto strong { font-weight: 700; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
   /* ── Skeleton loader ── */
   .loading-grid {
     display: grid;
@@ -374,6 +502,11 @@
     border: 1px solid rgba(9,38,58,0.06);
   }
 
+  .avisos-card {
+    border-color: #f6c94e;
+    background: linear-gradient(135deg, #fffdf0 0%, white 100%);
+  }
+
   .stat-icon { font-size: 1.75rem; flex-shrink: 0; }
 
   .stat-body {
@@ -396,6 +529,11 @@
     font-weight: 800;
     color: #09263a;
     line-height: 1;
+  }
+
+  .avisos-value {
+    color: #b06000;
+    font-size: 1.75rem;
   }
 
   .stat-value-sm {
@@ -423,6 +561,8 @@
     font-weight: 700;
     color: #09263a;
   }
+
+  .aviso-titulo { font-size: 1.1rem; }
 
   .seccion-sub {
     font-size: 0.8rem;
@@ -461,13 +601,16 @@
     white-space: nowrap;
   }
 
-  .plats-table tbody tr {
+  .fila-plataforma {
     border-bottom: 1px solid #f0f5f8;
     transition: background 0.15s;
+    cursor: pointer;
   }
 
+  .fila-plataforma:hover { background: #f4f9fc; }
+  .fila-plataforma.fila-expandida { background: #eef6fb; border-bottom: none; }
+
   .plats-table tbody tr:last-child { border-bottom: none; }
-  .plats-table tbody tr:hover      { background: #f8fbfd; }
 
   .plats-table td {
     padding: 0.85rem 1rem;
@@ -475,11 +618,40 @@
     vertical-align: middle;
   }
 
-  .plat-nombre { font-weight: 600; color: #09263a; }
+  .plat-nombre {
+    font-weight: 600;
+    color: #09263a;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .expand-arrow {
+    display: inline-block;
+    font-size: 0.6rem;
+    color: #8a9ba5;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .expand-arrow.open { transform: rotate(90deg); color: #0d6ea8; }
+
   .plat-tipo   { font-size: 0.8rem; color: #6a8090; }
   .ts-cell     { font-size: 0.82rem; color: #4f6575; font-family: monospace; }
   .td-right    { text-align: right; font-variant-numeric: tabular-nums; }
+  .td-sensores { white-space: nowrap; }
   .texto-alerta { color: #c0392b; font-weight: 600; }
+
+  .sensores-badge {
+    display: inline-block;
+    background: #eef6fb;
+    color: #0d6ea8;
+    border-radius: 99px;
+    padding: 0.15rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
 
   /* Estado badges */
   .estado-badge {
@@ -495,16 +667,114 @@
   .estado-alerta    { background: #fef3cd; color: #8a5a00; }
   .estado-sin_datos { background: #f0f0f0; color: #6a6a6a; }
 
-  /* ── Último aviso ── */
-  .aviso-card {
-    background: white;
-    border-radius: 16px;
-    padding: 1.25rem 1.5rem;
-    box-shadow: 0 2px 12px rgba(9,38,58,0.06);
-    border: 1px solid rgba(9,38,58,0.06);
+  /* Fila expandible de sensores */
+  .fila-sensores td {
+    padding: 0 1rem 0.85rem !important;
+    border-bottom: 1px solid #deeaf0;
+    background: #eef6fb;
+  }
+
+  .sensores-panel {
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem 2rem;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0;
+  }
+
+  .sensores-titulo {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #0d6ea8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+    margin-right: 0.25rem;
+  }
+
+  .sensores-lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .sensor-chip {
+    background: white;
+    border: 1.5px solid #c0ddf0;
+    border-radius: 99px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.78rem;
+    color: #2a4f6a;
+    font-weight: 500;
+  }
+
+  .sin-sensores { font-size: 0.8rem; color: #9aafba; font-style: italic; }
+
+  /* ── Toggle mantenimiento ── */
+  .td-mantenimiento { white-space: nowrap; }
+
+  .btn-toggle-mant {
+    padding: 0.28rem 0.75rem;
+    border-radius: 99px;
+    border: 1.5px solid #d1d5db;
+    background: white;
+    color: #374151;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s, border-color 0.18s, color 0.18s;
+    white-space: nowrap;
+  }
+
+  .btn-toggle-mant:hover:not(:disabled) {
+    border-color: #f59e0b;
+    background: #fffbeb;
+    color: #92400e;
+  }
+
+  .btn-toggle-mant.activo {
+    background: #fff3cd;
+    border-color: #f59e0b;
+    color: #92400e;
+  }
+
+  .btn-toggle-mant.activo:hover:not(:disabled) {
+    background: #fef9c3;
+    border-color: #d97706;
+  }
+
+  .btn-toggle-mant:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  /* ── Aviso grande ── */
+  .aviso-card-grande {
+    background: white;
+    border-radius: 18px;
+    padding: 1.5rem 1.75rem;
+    box-shadow: 0 2px 12px rgba(9,38,58,0.06);
+    border: 1.5px solid #f6c94e;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.25rem 2.5rem;
+  }
+
+  .aviso-numero-badge {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: #b06000;
+    background: #fff8e6;
+    border: 2px solid #f6c94e;
+    border-radius: 14px;
+    padding: 0.4rem 1rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .aviso-info-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 2rem;
+    flex: 1;
   }
 
   .aviso-row { display: flex; flex-direction: column; gap: 0.2rem; }
@@ -516,6 +786,22 @@
     color: #8a9ba5;
   }
   .aviso-val { font-size: 0.95rem; font-weight: 600; color: #09263a; }
+  .aviso-count { color: #b06000; font-size: 1.05rem; }
+
+  .btn-ver-avisos {
+    display: inline-block;
+    padding: 0.5rem 1.1rem;
+    border-radius: 10px;
+    background: #f6c94e;
+    color: #5a3500;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+
+  .btn-ver-avisos:hover { background: #f0b920; }
 
   /* ── Responsive ── */
   @media (max-width: 1100px) {
