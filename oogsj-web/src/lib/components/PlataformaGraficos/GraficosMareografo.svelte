@@ -1,21 +1,37 @@
 <script>
+  import { onMount } from 'svelte';
   import MareografoVisualizacionDatos from '../datos/MareografoVisualizacionDatos.svelte';
+  import MantenimientoBanner from './MantenimientoBanner.svelte';
 
-  // Este componente queda como wrapper simple del bloque visual del mareógrafo.
-  // A diferencia de la boya y las estaciones, acá no mostramos PanelVariables
-  // porque el resumen comparativo ya vive dentro de MareografoVisualizacionDatos
-  // y repetir un card superior no aporta claridad.
+  const PLATFORM_ID = 1;
+
+  let enMantenimiento = false;
+  let mensajeMantenimiento = '';
+  let estadoCargando = true;
+
+  onMount(async () => {
+    try {
+      const res = await fetch(`/api/plataforma/${PLATFORM_ID}/estado`);
+      const data = await res.json();
+      enMantenimiento = data.en_mantenimiento ?? false;
+      mensajeMantenimiento = data.mensaje ?? '';
+    } catch {
+      enMantenimiento = false;
+    } finally {
+      estadoCargando = false;
+    }
+  });
 </script>
 
-<!--
-  Bloque principal del mareógrafo:
-  - resumen superior
-  - gráfico comparativo
-  - leyenda
--->
-<div class="chart-container">
-  <MareografoVisualizacionDatos />
-</div>
+{#if estadoCargando}
+  <!-- espera silenciosa -->
+{:else if enMantenimiento}
+  <MantenimientoBanner mensaje={mensajeMantenimiento} />
+{:else}
+  <div class="chart-container">
+    <MareografoVisualizacionDatos />
+  </div>
+{/if}
 
 <style>
   .chart-container {

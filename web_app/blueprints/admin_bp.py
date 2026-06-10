@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from core_auth import admin_required
 from db import get_db_connection
 
@@ -110,6 +110,8 @@ def get_plataformas():
                 p.id,
                 p.name                                  AS nombre,
                 pt.name                                 AS tipo,
+                p.maintenance_mode,
+                p.maintenance_message,
                 COUNT(DISTINCT s.id)                    AS sensores,
                 MAX(m.timestamp)                        AS ultima_transmision,
                 COUNT(m.id)                             AS total_mediciones,
@@ -120,7 +122,7 @@ def get_plataformas():
             LEFT JOIN oogsj_data.platform_type pt  ON pt.id = p.platform_type_id
             LEFT JOIN oogsj_data.sensor s           ON s.platform_id = p.id
             LEFT JOIN oogsj_data.measurement m      ON m.sensor_id   = s.id
-            GROUP BY p.id, p.name, pt.name
+            GROUP BY p.id, p.name, pt.name, p.maintenance_mode, p.maintenance_message
             HAVING COUNT(DISTINCT s.id) > 0
             ORDER BY ultima_transmision DESC NULLS LAST;
         """)
@@ -147,7 +149,9 @@ def get_plataformas():
 
     plataformas = []
     for r in rows:
-        ultima_ts = r[4]
+        # r: id, nombre, tipo, maintenance_mode, maintenance_message,
+        #    sensores, ultima_transmision, total_mediciones, mediciones_24h
+        ultima_ts = r[6]
         if ultima_ts:
             # Normalizar a aware UTC para comparación segura
             if ultima_ts.tzinfo is None:
@@ -168,16 +172,76 @@ def get_plataformas():
             estado  = "sin_datos"
 
         plataformas.append({
-            "id":                 r[0],
-            "nombre":             r[1],
-            "tipo":               r[2],
-            "sensores":           r[3],
-            "lista_sensores":     sensors_by_platform.get(r[0], []),
-            "ultima_transmision": ultima_ts.isoformat() if ultima_ts else None,
-            "horas_sin_datos":    round(delta_h, 1) if delta_h is not None else None,
-            "total_mediciones":   r[5],
-            "mediciones_24h":     r[6],
-            "estado":             estado,  # "ok" | "alerta" | "sin_datos"
+            "id":                   r[0],
+            "nombre":               r[1],
+            "tipo":                 r[2],
+            "en_mantenimiento":     bool(r[3]),
+            "maintenance_message":  r[4],
+            "sensores":             r[5],
+            "lista_sensores":       sensors_by_platform.get(r[0], []),
+            "ultima_transmision":   ultima_ts.isoformat() if ultima_ts else None,
+            "horas_sin_datos":      round(delta_h, 1) if delta_h is not None else None,
+            "total_mediciones":     r[7],
+            "mediciones_24h":       r[8],
+            "estado":               estado,  # "ok" | "alerta" | "sin_datos"
         })
 
     return jsonify({"plataformas": plataformas})
+
+
+@admin_bp.patch("/plataformas/<int:platform_id>/mantenimiento")
+@admin_required
+def set_mantenimiento(platform_id):
+    """
+    Activar o desactivar el modo mantenimiento de una plataforma.
+    ---
+    tags: [Admin]
+    parameters:
+      - in: path
+        name: platform_id
+        schema: { type: integer }
+        required: true
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              maintenance_mode:    { type: boolean }
+              maintenance_message: { type: string, nullable: true }
+    responses:
+      200:
+        description: Estado actualizado
+      404:
+        description: Plataforma no encontrada
+    """
+    body    = request.get_json() or {}
+    modo    = bool(body.get("maintenance_mode", False))
+    mensaje = body.get("maintenance_message") or None
+
+    conn = get_db_connection()
+    cur  = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE oogsj_data.platform
+            SET maintenance_mode    = %s,
+                maintenance_message = %s
+            WHERE id = %s
+            RETURNING id, name, maintenance_mode, maintenance_message;
+        """, (modo, mensaje, platform_id))
+        row = cur.fetchone()
+        conn.commit()
+    finally:
+        cur.close()
+        conn.close()
+
+    if not row:
+        return jsonify({"error": "Plataforma no encontrada"}), 404
+
+    return jsonify({
+        "id":                  row[0],
+        "nombre":              row[1],
+        "en_mantenimiento":    bool(row[2]),
+        "maintenance_message": row[3],
+    })

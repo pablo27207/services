@@ -18,6 +18,8 @@
     ultima_transmision: string | null; horas_sin_datos: number | null;
     total_mediciones: number; mediciones_24h: number;
     estado: 'ok' | 'alerta' | 'sin_datos';
+    en_mantenimiento: boolean;
+    maintenance_message: string | null;
   };
 
   // ── estado ───────────────────────────────────────────────
@@ -27,6 +29,7 @@
   let cargando               = true;
   let errorMsg               = '';
   let expandedPlatId: number | null = null;
+  let toggling: number | null = null;
 
   const unsub = authStore.subscribe(s => { user = s.user; });
 
@@ -72,6 +75,34 @@
 
   function toggleSensores(id: number) {
     expandedPlatId = expandedPlatId === id ? null : id;
+  }
+
+  async function toggleMantenimiento(p: Plataforma) {
+    toggling = p.id;
+    try {
+      const nuevoModo = !p.en_mantenimiento;
+      const res = await fetch(`/api/admin/plataformas/${p.id}/mantenimiento`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          maintenance_mode: nuevoModo,
+          maintenance_message: nuevoModo
+            ? (p.maintenance_message || 'Plataforma temporalmente fuera de servicio por mantenimiento.')
+            : null
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        plats = plats.map(pl =>
+          pl.id === p.id
+            ? { ...pl, en_mantenimiento: data.en_mantenimiento, maintenance_message: data.maintenance_message }
+            : pl
+        );
+      }
+    } finally {
+      toggling = null;
+    }
   }
 
   onMount(() => { cargarDatos(); });
@@ -203,6 +234,7 @@
                 <th>Plataforma</th>
                 <th>Tipo</th>
                 <th>Estado</th>
+                <th>Mantenimiento</th>
                 <th>Última transmisión</th>
                 <th>Tiempo sin datos</th>
                 <th>Últ. 24 h</th>
@@ -231,6 +263,23 @@
                       {/if}
                     </span>
                   </td>
+                  <td on:click|stopPropagation class="td-mantenimiento">
+                    <button
+                      class="btn-toggle-mant"
+                      class:activo={p.en_mantenimiento}
+                      disabled={toggling === p.id}
+                      on:click={() => toggleMantenimiento(p)}
+                      title={p.en_mantenimiento ? 'Quitar modo mantenimiento' : 'Activar mantenimiento'}
+                    >
+                      {#if toggling === p.id}
+                        ⏳
+                      {:else if p.en_mantenimiento}
+                        🔧 En mantenimiento
+                      {:else}
+                        Activar
+                      {/if}
+                    </button>
+                  </td>
                   <td class="ts-cell">{fmtTs(p.ultima_transmision)}</td>
                   <td class="td-right {p.estado !== 'ok' ? 'texto-alerta' : ''}">
                     {fmtHoras(p.horas_sin_datos)}
@@ -245,7 +294,7 @@
                 <!-- Fila expandible con lista de sensores -->
                 {#if expandedPlatId === p.id}
                   <tr class="fila-sensores">
-                    <td colspan="8">
+                    <td colspan="9">
                       <div class="sensores-panel">
                         <span class="sensores-titulo">Sensores de {p.nombre}</span>
                         {#if p.lista_sensores && p.lista_sensores.length > 0}
@@ -660,6 +709,41 @@
   }
 
   .sin-sensores { font-size: 0.8rem; color: #9aafba; font-style: italic; }
+
+  /* ── Toggle mantenimiento ── */
+  .td-mantenimiento { white-space: nowrap; }
+
+  .btn-toggle-mant {
+    padding: 0.28rem 0.75rem;
+    border-radius: 99px;
+    border: 1.5px solid #d1d5db;
+    background: white;
+    color: #374151;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s, border-color 0.18s, color 0.18s;
+    white-space: nowrap;
+  }
+
+  .btn-toggle-mant:hover:not(:disabled) {
+    border-color: #f59e0b;
+    background: #fffbeb;
+    color: #92400e;
+  }
+
+  .btn-toggle-mant.activo {
+    background: #fff3cd;
+    border-color: #f59e0b;
+    color: #92400e;
+  }
+
+  .btn-toggle-mant.activo:hover:not(:disabled) {
+    background: #fef9c3;
+    border-color: #d97706;
+  }
+
+  .btn-toggle-mant:disabled { opacity: 0.55; cursor: not-allowed; }
 
   /* ── Aviso grande ── */
   .aviso-card-grande {
