@@ -1,12 +1,26 @@
 <script>
   import { onMount } from 'svelte';
 
-  const API_URL = '/api/avisos/navegante?limit=10';
+  const API_URL = '/api/avisos/navegante?limit=50';
 
   let avisos = [];
   let cargando = true;
   let error = false;
   let avisoAbierto = null;
+
+  let ordenDesc = true;
+  let tipoFiltro = 'todos';
+
+  $: tipos = ['todos', ...new Set(avisos.filter((a) => a.tipo).map((a) => a.tipo))];
+
+  $: avisosFiltrados = (() => {
+    let lista = tipoFiltro === 'todos' ? avisos : avisos.filter((a) => a.tipo === tipoFiltro);
+    return [...lista].sort((a, b) => {
+      const fa = a.fecha ?? '';
+      const fb = b.fecha ?? '';
+      return ordenDesc ? fb.localeCompare(fa) : fa.localeCompare(fb);
+    });
+  })();
 
   onMount(async () => {
     try {
@@ -43,6 +57,56 @@
     </p>
   </div>
 
+  {#if !cargando && !error && avisos.length > 0}
+    <div class="controles">
+
+      <!-- Filtro por tipo -->
+      <div class="filtros-tipo" role="group" aria-label="Filtrar por tipo">
+        {#each tipos as tipo}
+          <button
+            class="chip"
+            class:activo={tipoFiltro === tipo}
+            on:click={() => { tipoFiltro = tipo; avisoAbierto = null; }}
+          >
+            {tipo === 'todos' ? 'Todos' : tipo}
+          </button>
+        {/each}
+      </div>
+
+      <!-- Orden -->
+      <div class="orden" role="group" aria-label="Ordenar avisos">
+        <button
+          class="orden-btn"
+          class:activo={ordenDesc}
+          on:click={() => (ordenDesc = true)}
+          title="Más reciente primero"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M7 2v10M3.5 8.5L7 12l3.5-3.5" stroke="currentColor" stroke-width="1.6"
+              stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Más reciente
+        </button>
+        <button
+          class="orden-btn"
+          class:activo={!ordenDesc}
+          on:click={() => (ordenDesc = false)}
+          title="Más antiguo primero"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M7 12V2M3.5 5.5L7 2l3.5 3.5" stroke="currentColor" stroke-width="1.6"
+              stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Más antiguo
+        </button>
+      </div>
+
+      {#if tipoFiltro !== 'todos' || !ordenDesc}
+        <span class="resultado-count">{avisosFiltrados.length} aviso{avisosFiltrados.length !== 1 ? 's' : ''}</span>
+      {/if}
+    </div>
+  {/if}
+
   {#if cargando}
     <div class="estado">
       <div class="spinner"></div>
@@ -55,15 +119,15 @@
       <p>No se pudieron cargar los avisos en este momento.</p>
     </div>
 
-  {:else if avisos.length === 0}
+  {:else if avisosFiltrados.length === 0}
     <div class="estado">
       <span>📡</span>
-      <p>No hay avisos recientes para esta región.</p>
+      <p>{avisos.length === 0 ? 'No hay avisos recientes para esta región.' : 'Ningún aviso coincide con el filtro seleccionado.'}</p>
     </div>
 
   {:else}
     <ul class="lista">
-      {#each avisos as aviso (aviso.id)}
+      {#each avisosFiltrados as aviso (aviso.id)}
         {@const abierto = avisoAbierto === aviso.id}
         <li class="aviso-item" class:abierto>
 
@@ -101,7 +165,7 @@
               <div class="aviso-footer">
                 <span>Fuente: {aviso.fuente || 'SHN Argentina'}</span>
                 {#if aviso.scraped_at}
-                  <span>Actualizado: {formatFecha(aviso.scraped_at.slice(0,10))}</span>
+                  <span>Actualizado: {formatFecha(aviso.scraped_at.slice(0, 10))}</span>
                 {/if}
               </div>
             </div>
@@ -128,7 +192,7 @@
   .encabezado {
     text-align: center;
     max-width: 820px;
-    margin: 0 auto 3rem;
+    margin: 0 auto 2.5rem;
     padding: 2rem 2rem 2.5rem;
     background: linear-gradient(135deg, #041c2c 0%, #0a3352 100%);
     border-radius: 24px;
@@ -173,6 +237,89 @@
     font-size: 1.05rem;
     line-height: 1.75;
     margin: 0;
+  }
+
+  /* ── Controles de filtro y orden ─────────────────────── */
+  .controles {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem;
+    background: white;
+    border-radius: 18px;
+    border: 1.5px solid rgba(9, 38, 58, 0.08);
+    box-shadow: 0 4px 18px rgba(8, 37, 58, 0.06);
+  }
+
+  .filtros-tipo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    flex: 1;
+  }
+
+  .chip {
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    border: 1.5px solid rgba(9, 38, 58, 0.12);
+    background: #f4f8fb;
+    color: #4f6575;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+    white-space: nowrap;
+  }
+
+  .chip:hover { background: #e8f4fc; border-color: #0d6ea8; color: #0d6ea8; }
+
+  .chip.activo {
+    background: #0d6ea8;
+    border-color: #0d6ea8;
+    color: white;
+  }
+
+  .orden {
+    display: flex;
+    gap: 0.4rem;
+    border-left: 1.5px solid rgba(9, 38, 58, 0.1);
+    padding-left: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .orden-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    border: 1.5px solid rgba(9, 38, 58, 0.12);
+    background: #f4f8fb;
+    color: #4f6575;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+    white-space: nowrap;
+  }
+
+  .orden-btn:hover { background: #e8f4fc; border-color: #0d6ea8; color: #0d6ea8; }
+
+  .orden-btn.activo {
+    background: #e8f4fc;
+    border-color: #0d6ea8;
+    color: #0d6ea8;
+  }
+
+  .resultado-count {
+    font-size: 0.82rem;
+    color: #7a8f9b;
+    font-weight: 600;
+    border-left: 1.5px solid rgba(9, 38, 58, 0.1);
+    padding-left: 0.75rem;
+    flex-shrink: 0;
   }
 
   /* ── Estado (carga / error / vacío) ── */
@@ -254,9 +401,7 @@
     color: #0a2436;
   }
 
-  .aviso-item.abierto .numero {
-    color: #0d6ea8;
-  }
+  .aviso-item.abierto .numero { color: #0d6ea8; }
 
   .tipo {
     font-size: 0.78rem;
@@ -360,5 +505,23 @@
     .aviso-header { padding: 1rem; }
     .aviso-body { padding: 0 1rem 1rem; }
     .numero { font-size: 0.92rem; }
+
+    .controles {
+      padding: 0.85rem 1rem;
+      gap: 0.6rem;
+    }
+
+    .orden {
+      border-left: none;
+      padding-left: 0;
+      border-top: 1.5px solid rgba(9, 38, 58, 0.1);
+      padding-top: 0.6rem;
+      width: 100%;
+    }
+
+    .resultado-count {
+      border-left: none;
+      padding-left: 0;
+    }
   }
 </style>
