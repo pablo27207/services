@@ -74,11 +74,7 @@
       En esta sección se presentarán las distintas plataformas de monitoreo que se están implementando en el Golfo San Jorge, junto con sus ubicaciones específicas. Estas plataformas son parte integral del Observatorio Oceanográfico del Golfo San Jorge, un proyecto destinado a mejorar la gestión sostenible de los recursos marinos y a proporcionar datos críticos para la investigación científica.
   </p> -->
     <!-- Subtítulo con leyenda de colores -->
-  <p class="mt-2 text-base text-white">
-    <span style="font-size: 1.2em;">🟢</span> Plataforma activa &nbsp;&nbsp;
-    <span style="font-size: 1.2em;">🟠</span> En proceso de puesta en sistema &nbsp;&nbsp;
-    <span style="font-size: 1.2em;">🔴</span> Plataforma fuera de servicio
-  </p>
+ 
 </div>
 <br>
 

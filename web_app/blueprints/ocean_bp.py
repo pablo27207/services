@@ -195,6 +195,41 @@ def get_tide_forecast_data():
     return jsonify(data)
 
 
+@ocean_bp.get("/plataforma/<int:platform_id>/estado")
+def get_plataforma_estado(platform_id):
+    """
+    Estado de mantenimiento de una plataforma
+    ---
+    tags: [Ocean]
+    parameters:
+      - in: path
+        name: platform_id
+        schema: { type: integer }
+        required: true
+    responses:
+      200:
+        description: Estado de mantenimiento de la plataforma
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                en_mantenimiento: { type: boolean }
+                mensaje:          { type: string, nullable: true }
+    """
+    conn = get_db_connection()
+    cur  = conn.cursor()
+    cur.execute("""
+        SELECT maintenance_mode, maintenance_message
+        FROM oogsj_data.platform WHERE id = %s;
+    """, (platform_id,))
+    row = cur.fetchone()
+    cur.close(); conn.close()
+    if row is None:
+        return jsonify({"en_mantenimiento": False, "mensaje": None})
+    return jsonify({"en_mantenimiento": bool(row[0]), "mensaje": row[1]})
+
+
 @ocean_bp.get("/mediciones_negativas")
 def mediciones_negativas():
     """

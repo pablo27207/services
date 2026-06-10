@@ -17,7 +17,7 @@ _MONTH_NAMES = {
     9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre",
 }
 
-_FILE_RE = re.compile(r"^(\d{4})_(\d{2})_.+\.csv$")
+_FILE_RE = re.compile(r"^(\d{4})_(\d{2})_.+\.(csv|txt)$")
 
 
 def _human_size(n: int) -> str:
@@ -49,7 +49,7 @@ def _scan_exports(platform_filter: str = None, year_filter: int = None) -> list[
                 continue
 
             for f in sorted(year_dir.iterdir()):
-                if not f.is_file() or f.suffix != ".csv":
+                if not f.is_file() or f.suffix not in (".csv", ".txt"):
                     continue
                 m = _FILE_RE.match(f.name)
                 if not m:
@@ -60,6 +60,7 @@ def _scan_exports(platform_filter: str = None, year_filter: int = None) -> list[
                 rel   = f.relative_to(root).as_posix()
                 files.append({
                     "filename":     f.name,
+                    "format":       f.suffix.lstrip("."),
                     "year":         year,
                     "month":        month,
                     "month_name":   _MONTH_NAMES.get(month, ""),
@@ -171,9 +172,10 @@ def download_export(filepath: str):
     if not target.is_file():
         return jsonify({"error": "not_found"}), 404
 
+    mime = "text/plain" if target.suffix == ".txt" else "text/csv"
     return send_file(
         str(target),
-        mimetype="text/csv",
+        mimetype=mime,
         as_attachment=True,
         download_name=target.name,
     )

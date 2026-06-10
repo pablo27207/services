@@ -1,8 +1,11 @@
 <script>
+  import { onMount } from 'svelte';
   import PanelVariablesEstaciones from './PanelVariablesEstaciones.svelte';
   import EstacionMuelleVisualizacionDatos from '../datos/EstacionMuelleVisualizacionDatos.svelte';
+  import MantenimientoBanner from './MantenimientoBanner.svelte';
 
-  // Configuración base de la estación meteorológica del muelle.
+  const PLATFORM_ID = 5;
+
   const estacion = {
     nombre: "Muelle de Comodoro Rivadavia",
     lat: -45.836,
@@ -10,7 +13,6 @@
     info: "Estación meteorológica ubicada en el muelle de Comodoro Rivadavia."
   };
 
-  // Íconos por variable visible en el panel superior.
   const iconosMuelle = {
     barometric_pressure: "/iconosPaginaDatos/PresionBarometrica.png",
     outdoor_temperature: "/iconosPaginaDatos/TemperaturaExterior.png",
@@ -19,7 +21,6 @@
     wind_speed_avg: "/iconosPaginaDatos/VelocidadDeViento2.png"
   };
 
-  // Variables principales visibles en el resumen superior.
   const variablesMuelle = [
     "barometric_pressure",
     "outdoor_temperature",
@@ -27,13 +28,35 @@
     "wind_direction",
     "wind_speed_avg"
   ];
+
+  let enMantenimiento = false;
+  let mensajeMantenimiento = '';
+  let estadoCargando = true;
+
+  onMount(async () => {
+    try {
+      const res = await fetch(`/api/plataforma/${PLATFORM_ID}/estado`);
+      const data = await res.json();
+      enMantenimiento = data.en_mantenimiento ?? false;
+      mensajeMantenimiento = data.mensaje ?? '';
+    } catch {
+      enMantenimiento = false;
+    } finally {
+      estadoCargando = false;
+    }
+  });
 </script>
 
-<PanelVariablesEstaciones
-  endpoint="/api/appcr/muelle_cc"
-  titulo={estacion.nombre}
-  iconosVariables={iconosMuelle}
-  variablesVisibles={variablesMuelle}
-/>
-
-<EstacionMuelleVisualizacionDatos />
+{#if estadoCargando}
+  <!-- espera silenciosa -->
+{:else if enMantenimiento}
+  <MantenimientoBanner mensaje={mensajeMantenimiento} />
+{:else}
+  <PanelVariablesEstaciones
+    endpoint="/api/appcr/muelle_cc"
+    titulo={estacion.nombre}
+    iconosVariables={iconosMuelle}
+    variablesVisibles={variablesMuelle}
+  />
+  <EstacionMuelleVisualizacionDatos />
+{/if}

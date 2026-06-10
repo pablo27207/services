@@ -120,37 +120,58 @@
 
 <style>
   .avisos {
-    padding: 2rem 1.5rem 5rem;
+    padding: 3rem 1.5rem 5rem;
     max-width: 1280px;
     margin: 0 auto;
   }
 
   .encabezado {
     text-align: center;
-    max-width: 760px;
-    margin: 0 auto 2.5rem;
+    max-width: 820px;
+    margin: 0 auto 3rem;
+    padding: 2rem 2rem 2.5rem;
+    background: linear-gradient(135deg, #041c2c 0%, #0a3352 100%);
+    border-radius: 24px;
+    box-shadow: 0 12px 40px rgba(4, 28, 44, 0.25);
   }
 
   .subtitulo {
-    color: #0d6ea8;
+    color: #8fd3ff;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 0.75rem;
-    font-size: 0.9rem;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.9rem;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .subtitulo::before,
+  .subtitulo::after {
+    content: '';
+    display: inline-block;
+    width: 32px;
+    height: 1.5px;
+    background: #8fd3ff;
+    opacity: 0.5;
+    vertical-align: middle;
   }
 
   h2 {
-    font-size: clamp(1.8rem, 4vw, 2.8rem);
-    color: #09263a;
-    margin: 0 0 1rem;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    color: white;
+    margin: 0 0 1.1rem;
     line-height: 1.1;
+    font-weight: 900;
+    letter-spacing: -0.02em;
   }
 
   .texto {
-    color: #4f6575;
-    font-size: 1rem;
-    line-height: 1.7;
+    color: #a8cde0;
+    font-size: 1.05rem;
+    line-height: 1.75;
     margin: 0;
   }
 
@@ -189,16 +210,21 @@
 
   .aviso-item {
     background: white;
-    border: 1.5px solid rgba(9, 38, 58, 0.07);
+    border: 1.5px solid rgba(9, 38, 58, 0.09);
     border-radius: 18px;
     overflow: hidden;
-    box-shadow: 0 6px 20px rgba(8, 37, 58, 0.05);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 18px rgba(8, 37, 58, 0.07);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+  }
+
+  .aviso-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(8, 37, 58, 0.1);
   }
 
   .aviso-item.abierto {
     border-color: #0d6ea8;
-    box-shadow: 0 10px 28px rgba(13, 110, 168, 0.12);
+    box-shadow: 0 10px 32px rgba(13, 110, 168, 0.15);
   }
 
   /* ── Header ── */
@@ -223,7 +249,7 @@
   }
 
   .numero {
-    font-size: 1rem;
+    font-size: 1.05rem;
     font-weight: 700;
     color: #0a2436;
   }
