@@ -8,37 +8,75 @@
 </script>
 
 <style>
-
-
-  h1, h2 {
-      color: #ff8c00; /* Color naranja */
-      font-family: 'Arial', sans-serif;
-      font-weight: bold;
-      text-transform: uppercase;
-      transition: transform 0.3s ease, color 0.3s ease;
-      transform-origin: center;
+  .mission-section {
+    padding: 4rem 1rem 2.5rem;
+    text-align: center;
   }
 
-  .content {
-      margin-top: 60px; /* Espacio debajo del navbar fijo */
+  .mission-tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #f97316;
+    font-weight: 700;
+    margin-bottom: 14px;
+    opacity: 0;
+    animation: fadeUp 0.7s 0.1s ease forwards;
   }
 
-  h1:hover, h2:hover {
-      color: #ffa500;
-      transform: scale(1.05);
+  .mission-title {
+    font-size: clamp(1.5rem, 4vw, 2.4rem);
+    font-weight: 800;
+    color: #ff8c00;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 auto 18px;
+    max-width: 640px;
+    line-height: 1.2;
+    opacity: 0;
+    animation: fadeUp 0.7s 0.25s ease forwards;
+  }
+
+  .mission-divider {
+    width: 48px;
+    height: 3px;
+    background: #f97316;
+    border-radius: 2px;
+    margin: 0 auto 22px;
+    opacity: 0;
+    animation: fadeUp 0.7s 0.35s ease forwards;
+  }
+
+  .mission-text {
+    font-size: clamp(0.9rem, 1.8vw, 1.05rem);
+    line-height: 1.75;
+    color: rgba(255, 255, 255, 0.82);
+    max-width: 780px;
+    margin: 0 auto;
+    opacity: 0;
+    animation: fadeUp 0.7s 0.45s ease forwards;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 </style>
 
 
 <!-- Carrusel -->
 <Carrusel />
-<br>
 
 <!-- Sección de misión -->
-<h2 class="text-3xl font-bold text-center">Objetivos y Metas del Observatorio</h2>
-<p class="mt-4 text-lg text-white-900 text-center max-w-4xl mx-auto">
-  El Observatorio del Golfo San Jorge se concibe como una infraestructura tecnológica avanzada, diseñada para el monitoreo continuo y escalable del entorno marino, costero y atmosférico. Mediante la integración de diversas plataformas como boyas oceanográficas, estaciones meteorológicas y sensores costeros. Se busca generar información científica precisa y en tiempo real para fortalecer la gestión ambiental, apoyar la toma de decisiones y contribuir al desarrollo sostenible de las comunidades costeras.
-</p>
+<section class="mission-section">
+  <span class="mission-tag">Nuestra misión</span>
+  <h2 class="mission-title">Objetivos y Metas del Observatorio</h2>
+  <div class="mission-divider"></div>
+  <p class="mission-text">
+    El Observatorio del Golfo San Jorge se concibe como una infraestructura tecnológica avanzada, diseñada para el monitoreo continuo y escalable del entorno marino, costero y atmosférico. Mediante la integración de diversas plataformas como boyas oceanográficas, estaciones meteorológicas y sensores costeros, se busca generar información científica precisa y en tiempo real para fortalecer la gestión ambiental, apoyar la toma de decisiones y contribuir al desarrollo sostenible de las comunidades costeras.
+  </p>
+</section>
 
 
 <!-- Tarjetas -->
