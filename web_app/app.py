@@ -1,6 +1,7 @@
 from flask import Flask, jsonify
 from flask_mail import Mail
 from flasgger import Swagger
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 import config
 from blueprints.avisos_bp   import avisos_bp
@@ -62,6 +63,7 @@ SWAGGER_CONFIG = {
 
 def create_app() -> Flask:
     app = Flask(__name__)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
     app.config.update(
         MAIL_SERVER         = config.MAIL_SERVER,
