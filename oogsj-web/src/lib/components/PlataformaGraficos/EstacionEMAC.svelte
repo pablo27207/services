@@ -48,7 +48,7 @@
   <MantenimientoBanner mensaje={mensajeMantenimiento} />
 {:else}
   <PanelVariablesEstaciones
-    endpoint="/api/emac_cmd0"
+    endpoint="/api/emac_cmd0/"
     titulo="Estación EMAC - Caleta Córdova"
     iconosVariables={iconosEMAC}
     variablesVisibles={variablesEMAC}
