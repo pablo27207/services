@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
-from core_auth import admin_required
+from core_auth import admin_required, master_required
 from db import get_db_connection
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/api/admin")
@@ -190,7 +190,7 @@ def get_plataformas():
 
 
 @admin_bp.patch("/plataformas/<int:platform_id>/mantenimiento")
-@admin_required
+@master_required
 def set_mantenimiento(platform_id):
     """
     Activar o desactivar el modo mantenimiento de una plataforma.

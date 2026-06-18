@@ -19,7 +19,8 @@ def login():
     cur  = conn.cursor()
     cur.execute("""
         SELECT id, first_name, last_name, email,
-               COALESCE(password_hash,''), COALESCE(is_admin, false)
+               COALESCE(password_hash,''), COALESCE(is_admin, false),
+               admin_role
         FROM oogsj_data."user"
         WHERE LOWER(email) = LOWER(%s)
     """, (email,))
@@ -36,6 +37,7 @@ def login():
         "first_name": row[1],
         "last_name":  row[2],
         "is_admin":   row[5],
+        "admin_role": row[6],
     })
     resp = make_response(jsonify({"ok": True}))
     resp.set_cookie("auth_token", token, **cookie_opts())

@@ -11,6 +11,7 @@
   }
 
   $: currentPath = $page.url.pathname;
+  $: isMaster = user?.admin_role === 'master';
 </script>
 
 <aside class="sidebar">
@@ -39,26 +40,37 @@
       <span class="nav-icon">📚</span> Biblioteca
     </a>
     <a
-      href="/admin/noticias"
-      class="nav-item"
-      class:activo={currentPath.startsWith('/admin/noticias')}
-    >
-      <span class="nav-icon">📰</span> Noticias
-    </a>
-    <a
-      href="/admin/especies"
-      class="nav-item"
-      class:activo={currentPath.startsWith('/admin/especies')}
-    >
-      <span class="nav-icon">🐟</span> Especies
-    </a>
-    <a
       href="/admin/exports"
       class="nav-item"
       class:activo={currentPath.startsWith('/admin/exports')}
     >
       <span class="nav-icon">📦</span> Exports
     </a>
+
+    {#if isMaster}
+      <a
+        href="/admin/noticias"
+        class="nav-item"
+        class:activo={currentPath.startsWith('/admin/noticias')}
+      >
+        <span class="nav-icon">📰</span> Noticias
+      </a>
+      <a
+        href="/admin/especies"
+        class="nav-item"
+        class:activo={currentPath.startsWith('/admin/especies')}
+      >
+        <span class="nav-icon">🐟</span> Especies
+      </a>
+      <div class="nav-divider"></div>
+      <a
+        href="/admin/usuarios"
+        class="nav-item"
+        class:activo={currentPath.startsWith('/admin/usuarios')}
+      >
+        <span class="nav-icon">👥</span> Usuarios
+      </a>
+    {/if}
   </nav>
 
   <div class="sidebar-footer">
@@ -66,7 +78,12 @@
       <div class="user-info">
         <div class="user-avatar">{user.first_name[0]}{user.last_name[0]}</div>
         <div class="user-text">
-          <span class="user-name">{user.first_name} {user.last_name}</span>
+          <div class="user-name-row">
+            <span class="user-name">{user.first_name} {user.last_name}</span>
+            <span class="role-badge role-{user.admin_role}">
+              {user.admin_role === 'master' ? 'Master' : 'Viewer'}
+            </span>
+          </div>
           <span class="user-email">{user.email}</span>
         </div>
       </div>
@@ -134,6 +151,12 @@
 
   .nav-icon { font-size: 0.95rem; }
 
+  .nav-divider {
+    height: 1px;
+    background: rgba(143,211,255,0.08);
+    margin: 0.5rem 0.85rem;
+  }
+
   .sidebar-footer {
     padding: 1rem 0.75rem 0;
     border-top: 1px solid rgba(143,211,255,0.1);
@@ -163,7 +186,14 @@
     text-transform: uppercase;
   }
 
-  .user-text { display: flex; flex-direction: column; min-width: 0; }
+  .user-text { display: flex; flex-direction: column; min-width: 0; gap: 0.15rem; }
+
+  .user-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+  }
 
   .user-name {
     font-size: 0.8rem;
@@ -172,7 +202,22 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
   }
+
+  .role-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 4px;
+    padding: 0.1rem 0.35rem;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .role-master { background: rgba(249,115,22,0.2); color: #fb923c; }
+  .role-viewer { background: rgba(143,211,255,0.12); color: #6ba8c8; }
 
   .user-email {
     font-size: 0.7rem;

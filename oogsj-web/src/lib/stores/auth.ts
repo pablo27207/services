@@ -1,11 +1,14 @@
 import { writable } from 'svelte/store';
 
+export type AdminRole = 'master' | 'viewer';
+
 export type AdminUser = {
   id:         number;
   email:      string;
   first_name: string;
   last_name:  string;
   is_admin:   boolean;
+  admin_role: AdminRole | null;
 };
 
 type AuthState = {

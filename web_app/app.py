@@ -16,6 +16,7 @@ from blueprints.noticias_bp import noticias_bp
 from blueprints.especies_bp import especies_bp
 from blueprints.exports_bp    import exports_bp
 from blueprints.emac_cmd0_bp  import emac_cmd0_bp
+from blueprints.users_bp      import users_bp
 
 SWAGGER_CONFIG = {
     "title": "OOGSJ API",
@@ -89,6 +90,7 @@ def create_app() -> Flask:
     app.register_blueprint(especies_bp)
     app.register_blueprint(exports_bp)
     app.register_blueprint(emac_cmd0_bp)
+    app.register_blueprint(users_bp)
 
     return app
 

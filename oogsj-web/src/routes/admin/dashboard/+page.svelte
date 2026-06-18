@@ -264,21 +264,27 @@
                     </span>
                   </td>
                   <td on:click|stopPropagation class="td-mantenimiento">
-                    <button
-                      class="btn-toggle-mant"
-                      class:activo={p.en_mantenimiento}
-                      disabled={toggling === p.id}
-                      on:click={() => toggleMantenimiento(p)}
-                      title={p.en_mantenimiento ? 'Quitar modo mantenimiento' : 'Activar mantenimiento'}
-                    >
-                      {#if toggling === p.id}
-                        ⏳
-                      {:else if p.en_mantenimiento}
-                        🔧 En mantenimiento
-                      {:else}
-                        Activar
-                      {/if}
-                    </button>
+                    {#if user?.admin_role === 'master'}
+                      <button
+                        class="btn-toggle-mant"
+                        class:activo={p.en_mantenimiento}
+                        disabled={toggling === p.id}
+                        on:click={() => toggleMantenimiento(p)}
+                        title={p.en_mantenimiento ? 'Quitar modo mantenimiento' : 'Activar mantenimiento'}
+                      >
+                        {#if toggling === p.id}
+                          ⏳
+                        {:else if p.en_mantenimiento}
+                          🔧 En mantenimiento
+                        {:else}
+                          Activar
+                        {/if}
+                      </button>
+                    {:else if p.en_mantenimiento}
+                      <span class="mant-readonly">🔧 En mantenimiento</span>
+                    {:else}
+                      <span class="mant-readonly mant-ok">—</span>
+                    {/if}
                   </td>
                   <td class="ts-cell">{fmtTs(p.ultima_transmision)}</td>
                   <td class="td-right {p.estado !== 'ok' ? 'texto-alerta' : ''}">
@@ -744,6 +750,19 @@
   }
 
   .btn-toggle-mant:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  .mant-readonly {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #92400e;
+    background: #fff3cd;
+    border: 1.5px solid #f59e0b;
+    border-radius: 99px;
+    padding: 0.25rem 0.65rem;
+    white-space: nowrap;
+  }
+
+  .mant-ok { background: transparent; border-color: transparent; color: #9aafba; }
 
   /* ── Aviso grande ── */
   .aviso-card-grande {
