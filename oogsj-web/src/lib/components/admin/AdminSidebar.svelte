@@ -71,6 +71,20 @@
         <span class="nav-icon">👥</span> Usuarios
       </a>
     {/if}
+
+    <div class="nav-divider"></div>
+    <a
+      href="/admin/perfil"
+      class="nav-item"
+      class:activo={currentPath.startsWith('/admin/perfil')}
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-svg">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+      Mi perfil
+    </a>
   </nav>
 
   <div class="sidebar-footer">
@@ -150,6 +164,7 @@
   .nav-item.activo { background: rgba(13,110,168,0.25); color: #8fd3ff; font-weight: 600; }
 
   .nav-icon { font-size: 0.95rem; }
+  .nav-svg  { flex-shrink: 0; opacity: 0.75; }
 
   .nav-divider {
     height: 1px;
