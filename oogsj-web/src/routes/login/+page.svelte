@@ -1,11 +1,28 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { authStore } from '$lib/stores/auth';
 
-  let email    = '';
-  let password = '';
-  let error    = '';
-  let loading  = false;
+  let email        = '';
+  let password     = '';
+  let error        = '';
+  let loading      = false;
+  let showPassword = false;
+  let remember     = false;
+
+  const STORAGE_KEY = 'oogsj_remember';
+
+  onMount(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        email    = parsed.email    ?? '';
+        password = parsed.password ?? '';
+        remember = true;
+      }
+    } catch { /* ignore */ }
+  });
 
   async function onSubmit(e: Event) {
     e.preventDefault();
@@ -13,6 +30,11 @@
     loading = true;
     try {
       await authStore.login(email.trim().toLowerCase(), password);
+      if (remember) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ email: email.trim().toLowerCase(), password }));
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
       const next = new URLSearchParams(window.location.search).get('next') ?? '/admin/dashboard';
       goto(next);
     } catch (err: any) {
@@ -72,14 +94,43 @@
 
       <label class="field">
         <span>Contraseña</span>
-        <input
-          type="password"
-          bind:value={password}
-          autocomplete="current-password"
-          placeholder="••••••••"
-          required
-          disabled={loading}
-        />
+        <div class="password-wrap">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            bind:value={password}
+            autocomplete="current-password"
+            placeholder="••••••••"
+            required
+            disabled={loading}
+          />
+          <button
+            type="button"
+            class="eye-btn"
+            on:click={() => showPassword = !showPassword}
+            tabindex="-1"
+            aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          >
+            {#if showPassword}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            {:else}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            {/if}
+          </button>
+        </div>
+      </label>
+
+      <label class="remember-check">
+        <input type="checkbox" bind:checked={remember} />
+        <span>Recordarme en este dispositivo</span>
       </label>
 
       <button type="submit" class="btn-login" disabled={loading}>
@@ -127,9 +178,7 @@
     gap: 1rem;
   }
 
-  .logo-mark {
-    flex-shrink: 0;
-  }
+  .logo-mark { flex-shrink: 0; }
 
   .logo-eyebrow {
     font-size: 0.72rem;
@@ -199,6 +248,8 @@
     outline: none;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
     background: #f8fbfd;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .field input:focus {
@@ -212,8 +263,57 @@
     cursor: not-allowed;
   }
 
+  /* Password wrap */
+  .password-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .password-wrap input {
+    padding-right: 2.8rem;
+  }
+
+  .eye-btn {
+    position: absolute;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: #8a9ba5;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s;
+    flex-shrink: 0;
+  }
+
+  .eye-btn:hover { color: #0d6ea8; }
+
+  /* Remember me */
+  .remember-check {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .remember-check input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #0d6ea8;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .remember-check span {
+    font-size: 0.83rem;
+    color: #4a6070;
+  }
+
   .btn-login {
-    margin-top: 0.5rem;
+    margin-top: 0.25rem;
     background: #0d6ea8;
     color: white;
     border: none;
