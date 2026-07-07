@@ -82,6 +82,21 @@
         { nombre: "wind_speed",        tipo: "Velocidad del Viento",  imagen: "/imagenes/Sensores/anemometro-foto.jpg", descripcion: "Mide la velocidad del viento en km/h." },
         { nombre: "wind_direction",    tipo: "Dirección del Viento",  imagen: "/imagenes/Sensores/corriente_direccion.png", descripcion: "Indica la dirección del viento en grados." }
       ]
+    },
+    {
+      nombre: "Estación EMAC - Club Náutico",
+      lat: -45.831766,
+      lon: -67.462439,
+      info: "Estación hidrometeorológica EMAC ubicada en el Club Náutico. Monitorea nivel y temperatura del agua, conductividad, temperatura del aire y condiciones de viento.",
+      imagen: "/imagenes/Plataformas/PuertoCaleta.jpg",
+      sensores: [
+        { nombre: "water_level",       tipo: "Nivel del Agua",        imagen: "/imagenes/Sensores/presion.png",         descripcion: "Mide el nivel del agua en metros." },
+        { nombre: "water_temperature", tipo: "Temperatura del Agua",  imagen: "/imagenes/Sensores/temperatura.png",     descripcion: "Mide la temperatura del agua en °C." },
+        { nombre: "conductivity",      tipo: "Conductividad",         imagen: "/imagenes/Sensores/humedad.png",         descripcion: "Mide la conductividad eléctrica del agua en mS/cm." },
+        { nombre: "air_temperature",   tipo: "Temperatura del Aire",  imagen: "/imagenes/Sensores/temperatura.png",     descripcion: "Mide la temperatura del aire exterior en °C." },
+        { nombre: "wind_speed",        tipo: "Velocidad del Viento",  imagen: "/imagenes/Sensores/anemometro-foto.jpg", descripcion: "Mide la velocidad del viento en km/h." },
+        { nombre: "wind_direction",    tipo: "Dirección del Viento",  imagen: "/imagenes/Sensores/corriente_direccion.png", descripcion: "Indica la dirección del viento en grados." }
+      ]
     }
   ];
 

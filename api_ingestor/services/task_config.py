@@ -9,6 +9,7 @@ from services.caleta_muelle_scraper    import WeatherCMScraper
 from services.documentos_scraper       import ScientificDocScraper
 from services.shn_avisos_scraper       import SHNAvisosScraper
 from services.emac_cmd0_scraper        import EMACCMD0Scraper     # ← Estación CMD0 Caleta Córdova
+from services.emac_cmd1_scraper        import EMACCMD1Scraper     # ← Estación CMD1
 
 TASKS = {
     "buoy": {
@@ -44,6 +45,11 @@ TASKS = {
     # equilibra frescura de datos con carga sobre el servidor EMAC.
     "emac_cmd0_station": {
         "scraper":  EMACCMD0Scraper.fetch_station_data,
+        "schedule": crontab(minute="*/30"),           # cada 30 minutos
+    },
+    # Estación hidrometeorológica EMAC CMD1
+    "emac_cmd1_station": {
+        "scraper":  EMACCMD1Scraper.fetch_station_data,
         "schedule": crontab(minute="*/30"),           # cada 30 minutos
     },
 }

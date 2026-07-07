@@ -120,7 +120,7 @@ def get_buoy_data():
     data = {name: [] for name in BUOY_SENSORS.values()}
     for sensor_id, timestamp, value in raw:
         name = BUOY_SENSORS.get(sensor_id, f"Sensor {sensor_id}")
-        data[name].append({"timestamp": timestamp, "value": value})
+        data.setdefault(name, []).append({"timestamp": timestamp, "value": value})
     return jsonify(data)
 
 
