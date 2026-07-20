@@ -8,6 +8,7 @@
   import EstacionCaleta from '$lib/components/PlataformaGraficos/EstacionCaleta.svelte';
   import EstacionPuerto from '$lib/components/PlataformaGraficos/EstacionPuerto.svelte';
   import EstacionEMAC from '$lib/components/PlataformaGraficos/EstacionEMAC.svelte';
+  import EstacionEMACCMD1 from '$lib/components/PlataformaGraficos/EstacionEMACCMD1.svelte';
   import PlataformaNoHabilitada from '$lib/components/PlataformaGraficos/PlataformaNoHabilitada.svelte';
   import DescargaDatos from '$lib/components/datos/DescargaDatos.svelte';
 
@@ -69,7 +70,16 @@
       lat: -45.749189,
       lon: -67.368762,
       info: "Estación hidrometeorológica EMAC ubicada en Caleta Córdova. Monitorea nivel y temperatura del agua, conductividad, temperatura del aire, viento y dirección.",
-      imagen: "/imagenes/Plataformas/PuertoCaleta.jpg"
+      imagen: "/imagenes/Plataformas/PuertoCaleta.jpg",
+      codigo: "emac_cmd0"
+    },
+    {
+      nombre: "Estación EMAC - Club Náutico",
+      lat: -45.831766,
+      lon: -67.462439,
+      info: "Estación hidrometeorológica EMAC ubicada en el Club Náutico. Monitorea nivel y temperatura del agua, conductividad, temperatura del aire, viento y dirección.",
+      imagen: "/imagenes/Plataformas/PuertoCaleta.jpg",
+      codigo: "emac_cmd1"
     }
   ];
 
@@ -239,7 +249,9 @@
           <GraficosMareografo />
         {:else if plataformaSeleccionada.nombre.toLowerCase().includes("boya")}
           <GraficosBoya />
-        {:else if plataformaSeleccionada.nombre.toLowerCase().includes("emac")}
+        {:else if plataformaSeleccionada.codigo === "emac_cmd1"}
+          <EstacionEMACCMD1 />
+        {:else if plataformaSeleccionada.codigo === "emac_cmd0" || plataformaSeleccionada.nombre.toLowerCase().includes("emac")}
           <EstacionEMAC />
         {:else if plataformaSeleccionada.nombre.toLowerCase().includes("caleta")}
           <EstacionCaleta />

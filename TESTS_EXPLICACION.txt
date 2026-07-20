@@ -1,0 +1,289 @@
+====================================================================
+ SUITE DE TESTS UNITARIOS — OOGSJ (web_app + api_ingestor)
+ Generado: 2026-07-06
+====================================================================
+
+QUÉ ES ESTO
+-----------
+Una batería de tests automáticos (pytest) que corren SIN tocar la base de
+datos real ni la red real (todo lo que habla con Postgres o con la API de
+EMAC está simulado/mockeado). Sirven como red de seguridad: se corren antes
+de pasar código de developer a producción, y si algo se rompe, el test
+falla ahí mismo en segundos, en vez de romperse en producción como pasó hoy
+con la estación EMAC CMD1.
+
+No requieren Docker corriendo con datos reales, no requieren internet, y no
+modifican nada persistente.
+
+
+CÓMO CORRERLOS
+---------------
+Opción rápida (requiere los contenedores levantados con docker-compose):
+
+    ./run_tests.sh
+
+Esto instala pytest/pytest-mock/freezegun dentro de los contenedores
+`web_app` y `api_ingestor` (si no estaban) y corre ambas suites. Si algo
+falla, termina con código de salida distinto de 0 — se puede enchufar
+directo a un pipeline de CI/CD como gate antes del deploy.
+
+Manualmente:
+
+    docker exec web_app      python -m pytest tests/ -v
+    docker exec api_ingestor python -m pytest tests/ -v
+
+Estado actual: 88 tests, 88 pasando (48 en web_app, 40 en api_ingestor).
+
+
+ARCHIVOS AGREGADOS
+-------------------
+web_app/
+  pytest.ini                       -> config de pytest (dónde buscar tests)
+  requirements-test.txt            -> pytest + pytest-mock + freezegun
+  tests/conftest.py                -> setup compartido (ver abajo)
+  tests/test_db_utils.py
+  tests/test_app_factory.py
+  tests/test_emac_cmd0_bp.py
+  tests/test_emac_cmd1_bp.py
+  tests/test_ocean_bp.py
+  tests/test_admin_bp.py
+
+api_ingestor/
+  pytest.ini
+  requirements-test.txt
+  tests/conftest.py
+  tests/test_task_config.py
+  tests/test_celery_tasks.py
+  tests/test_emac_cmd0_scraper.py
+  tests/test_emac_cmd1_scraper.py
+  tests/test_db_handler.py
+
+run_tests.sh                       -> corre todo de un solo comando
+
+
+CÓMO FUNCIONA EL MOCKEO (por qué esto es seguro de correr siempre)
+--------------------------------------------------------------------
+- Ningún test abre una conexión real a Postgres. Cada test reemplaza
+  `get_db_connection()` (web_app) o `psycopg2.connect()` (api_ingestor) por
+  un objeto falso (Mock) al que se le dice de antemano qué filas "devolver".
+  Así se prueba la LÓGICA (conversión de unidades, agrupamiento, cálculo de
+  estados) sin depender de que la base de datos exista o tenga datos.
+- Ningún test golpea la API real de EMAC (emac.criba.edu.ar). Se mockea
+  `requests.get` con respuestas CSV de ejemplo, incluyendo respuestas
+  vacías, con error HTTP, timeout, y filas corruptas.
+- `web_app/tests/conftest.py` setea variables de entorno (JWT_SECRET,
+  carpetas de upload/export temporales, credenciales de DB dummy) ANTES de
+  importar el código de la app, porque `config.py` crea carpetas y falla
+  si no hay valores al importarse.
+- `api_ingestor/tests/conftest.py` hace lo mismo pero es más crítico:
+  `services/config.py` llama `sys.exit(1)` si faltan las variables
+  POSTGRES_* al importarse — sin este conftest, pytest ni siquiera podría
+  arrancar.
+
+
+====================================================================
+ QUÉ CUBRE CADA TEST — web_app
+====================================================================
+
+tests/test_db_utils.py
+  Prueba `safe_float()`, la función que sanitiza valores antes de mandarlos
+  por API (usada en ocean_bp). Casos: número válido, entero, None, texto
+  inválido, NaN (debe dar 0.0), infinito (documenta que NO se normaliza a
+  0.0, a diferencia de NaN — es un detalle no obvio del código), y una lista
+  (tipo totalmente inválido).
+
+tests/test_app_factory.py
+  Tests de arranque de toda la aplicación Flask:
+  - que `create_app()` no explote.
+  - que los 14 blueprints esperados estén todos registrados.
+  - que NO haya dos rutas (path + método) registradas por blueprints
+    distintos — si esto pasa, una ruta "pisa" a la otra en silencio y una
+    de las dos queda inalcanzable. Es EXACTAMENTE el tipo de bug que casi
+    pasa hoy entre EMAC CMD0 y CMD1 si hubiesen compartido prefijo.
+  - que los prefijos de CMD0 (/api/emac_cmd0) y CMD1 (/api/emac_cmd1) sean
+    distintos entre sí (test paramétrico, uno por estación).
+  - que /health responda 200 (ojo: /health cuelga de la instancia global
+    `app`, no de `create_app()` — el test lo verifica explícitamente porque
+    es una particularidad fácil de romper al refactorizar app.py).
+
+tests/test_emac_cmd0_bp.py  y  tests/test_emac_cmd1_bp.py
+  (Los dos archivos son gemelos porque los blueprints son gemelos — un bug
+  copiado de uno a otro se detecta en ambos por separado.)
+  - GET /api/emac_cmd{0,1}/ sin filas en la DB -> variables vacías, no rompe.
+  - GET .../ con filas -> arma bien el diccionario de variables, con label,
+    sensor_id, unit y value correctos.
+  - Conversión de unidades del viento: se guarda en m/s en la base y la API
+    debe devolverlo en km/h (x3.6). Este es el cálculo más fácil de romper
+    sin querer si alguien "simplifica" el código.
+  - Valor NULL en la DB -> no explota, value queda en None.
+  - Variable no mapeada en _VARIABLE_MAP -> fallback genérico (key/label
+    derivados del nombre crudo), no crashea.
+  - GET .../history agrupa correctamente por variable y aplica la misma
+    conversión de viento a la serie histórica completa.
+  - CMD1 además prueba GET .../estado (mantenimiento): plataforma en
+    mantenimiento, plataforma activa, y el caso crítico de HOY — la
+    plataforma todavía no existe en la base (migración no corrida) — el
+    endpoint debe responder "no en mantenimiento" en vez de romper.
+
+tests/test_ocean_bp.py
+  Cubre los 7 endpoints del blueprint de mareógrafo/boya/marea:
+  /mareograph, /mareograph/latest, /buoy, /buoy/latest, /tide_forecast,
+  /plataforma/<id>/estado, /mediciones_negativas.
+  - Casos con datos, sin datos, con valores None.
+  - /buoy: TEST QUE ENCONTRÓ UN BUG REAL (ver sección "BUG ENCONTRADO"
+    abajo) — un sensor_id no contemplado en BUOY_SENSORS hacía crashear
+    el endpoint entero con un KeyError (500). Ya está arreglado.
+  - /plataforma/<id>/estado con id no numérico -> debe dar 404, no 500
+    (Flask lo filtra por el converter <int:...> de la ruta).
+
+tests/test_admin_bp.py
+  Cubre autenticación y lógica de negocio del dashboard admin:
+  - Sin cookie de sesión -> 401 en endpoints protegidos.
+  - Cookie de usuario no-admin -> 401.
+  - Cookie de admin "viewer" -> puede ver /plataformas y /stats, pero NO
+    puede activar mantenimiento (eso requiere rol "master" -> 403 si no lo
+    tiene).
+  - Cookie de admin "master" -> puede activar/desactivar mantenimiento
+    (200), y si la plataforma no existe responde 404.
+  - /stats: agrega correctamente mediciones totales, últimas 24h, última
+    hora, plataformas activas, avisos y documentos.
+  - /plataformas: la lógica de "estado" (el corazón del dashboard) probada
+    en sus 4 bordes exactos:
+      * datos de hace 1h   -> "ok"
+      * datos de hace 20h  -> "alerta"  (entre 12h y 48h)
+      * datos de hace 50h  -> "sin_datos" (más de 48h)
+      * timestamp a FUTURO (como predicción de marea) -> "ok", sin
+        "horas_sin_datos" (para no marcar como atrasada una predicción)
+      * plataforma sin ninguna medición nunca -> "sin_datos"
+
+
+====================================================================
+ QUÉ CUBRE CADA TEST — api_ingestor
+====================================================================
+
+tests/test_task_config.py
+  Verifica la integridad del diccionario TASKS (el registro central de
+  scrapers + horarios que usa Celery):
+  - que las 9 tareas esperadas existan (incluidas emac_cmd0_station y
+    emac_cmd1_station).
+  - que cada una tenga un "scraper" invocable y un "schedule" crontab
+    válido — si uno queda mal cargado, Celery Beat completo deja de
+    arrancar y CAEN TODAS las estaciones, no solo la nueva.
+  - que CMD0 y CMD1 tengan la misma cadencia (cada 30 min) pero usen
+    scrapers DISTINTOS (si por copy-paste quedaran apuntando al mismo
+    scraper, CMD1 nunca se llegaría a scrapear aunque la tarea "exista").
+
+tests/test_celery_tasks.py
+  Prueba la fábrica genérica `create_celery_task()` que envuelve cada
+  scraper en una tarea Celery real (se invoca con `.run()`, sin necesitar
+  Redis ni un worker corriendo):
+  - scraper exitoso -> llama a DBHandler.insert_measurements() con los
+    datos devueltos.
+  - la tarea "shn_avisos" usa insert_avisos() en vez de insert_measurements
+    (hay una lista especial AVISOS_TASKS que decide esto).
+  - scraper que devuelve lista vacía -> no inserta nada y reintenta/falla
+    (no se traga el error en silencio).
+  - scraper que lanza una excepción -> se propaga (no queda enmascarada).
+  - que "celery_tasks.fetch_emac_cmd0_station" y "celery_tasks.
+    fetch_emac_cmd1_station" queden efectivamente registradas como tareas
+    de Celery Y en el beat_schedule — esto es justo lo que faltó
+    verificar hoy: task_config.py estaba bien, pero como el worker corría
+    con código viejo, la tarea no existía hasta reiniciar el contenedor.
+    Este test asegura que, dado el código actual, la tarea SIEMPRE queda
+    bien armada.
+
+tests/test_emac_cmd0_scraper.py  y  tests/test_emac_cmd1_scraper.py
+  (gemelos, mismo motivo que los blueprints)
+  - _resolve_ids(): si la plataforma no tiene sensores en la DB, lanza
+    RuntimeError con el nombre EXACTO del archivo de migración que hay que
+    correr (mensaje de ayuda para quien lo vea en los logs). Mismo test
+    para "no hay ubicación activa".
+  - _resolve_ids() ignora sensores de la DB que no están en su mapa interno
+    (por si hay sensores de otra estación con nombres parecidos).
+  - fetch_station_data():
+      * si no puede resolver IDs (DB no migrada) -> devuelve lista vacía,
+        NO lanza excepción (así no tumba la tarea Celery en cada corrida
+        mientras la migración no esté aplicada, solo loguea el problema).
+      * parsea bien el CSV de la API EMAC y arma las tuplas de inserción.
+      * convierte viento de km/h (lo que entrega la API) a m/s (lo que se
+        guarda en la base) — es la conversión inversa a la que hace el
+        blueprint al leer.
+      * filas con timestamp o valor corrupto se descartan sin romper el
+        resto.
+      * respuesta vacía o con una sola columna -> no rompe, sigue de largo.
+      * timeout / error HTTP en UNA variable no corta el loop de las demás
+        variables (si el sensor de viento falla, el de temperatura se
+        sigue guardando igual).
+  - CMD1 tiene además un test específico que reproduce lo que se vio HOY en
+    producción: dos variables (Nivel del Agua, Conductividad) llegan sin
+    datos válidos tras el parseo, pero las otras 4 variables deben seguir
+    insertándose sin verse afectadas.
+
+tests/test_db_handler.py
+  - DBHandler() nunca debe lanzar excepción al instanciarse, ni siquiera
+    sin base de datos disponible (las tareas Celery lo instancian sin
+    try/except alrededor — si esto lanzara, tumbaría la tarea entera).
+  - insert_measurements(): hace commit si la conexión está activa; si la
+    conexión está caída (None), no hace nada (no explota).
+  - DOCUMENTA un comportamiento asimétrico existente entre los dos métodos
+    de inserción: insert_measurements() NO hace rollback si falla (el error
+    solo se loguea), mientras que insert_avisos() SÍ hace rollback. No se
+    "corrigió" esto porque cambiar ese comportamiento es una decisión de
+    negocio, no un bug obvio — pero el test lo deja documentado y en
+    guardia: si algún día cambia sin querer, el test avisa.
+  - close() cierra cursor y conexión si existen, y no rompe si ya están
+    en None.
+
+
+====================================================================
+ BUG ENCONTRADO Y CORREGIDO MIENTRAS SE ESCRIBÍAN LOS TESTS
+====================================================================
+
+Archivo: web_app/blueprints/ocean_bp.py, endpoint GET /api/buoy
+
+Antes:
+    data = {name: [] for name in BUOY_SENSORS.values()}
+    for sensor_id, timestamp, value in raw:
+        name = BUOY_SENSORS.get(sensor_id, f"Sensor {sensor_id}")
+        data[name].append({...})              # <- KeyError si sensor_id
+                                                #    no está en BUOY_SENSORS
+
+Si en algún momento aparece en la tabla `measurement` un registro con un
+sensor_id de la boya que no está en el diccionario BUOY_SENSORS (ej. se
+agrega un sensor nuevo a la boya física y todavía no se actualizó ese
+diccionario en el código), el endpoint completo devuelve un 500 en vez de
+simplemente incluir ese sensor con un nombre genérico. Ya se corrigió
+cambiando `data[name].append(...)` por `data.setdefault(name, []).append(...)`.
+Test que lo prueba: test_ocean_bp.py::test_buoy_con_sensor_desconocido_usa_fallback.
+
+Ya se reinició el contenedor web_app para que el fix esté activo en el
+ambiente actual (no hace falta rebuild de imagen, el código se monta como
+volumen).
+
+
+====================================================================
+ QUÉ NO ESTÁ CUBIERTO TODAVÍA (alcance de esta tanda)
+====================================================================
+
+Se priorizó lo tocado en esta sesión (EMAC CMD0/CMD1 de punta a punta) y la
+infraestructura compartida más crítica (arranque de la app, autenticación,
+mareógrafo/boya, el pipeline genérico de Celery). Quedan SIN tests unitarios
+propios, y serían el siguiente paso recomendado:
+
+  web_app/blueprints/: stations_bp, library_bp, noticias_bp, especies_bp,
+  auth_bp, users_bp, contact_bp, exports_bp, files_bp, avisos_bp.
+
+  api_ingestor/services/: caleta_cordova_scraper, caleta_muelle_scraper,
+  comodoro_rivadavia_scraper, buoy_scraper, mareograph_scraper,
+  tide_forecast_scraper, documentos_scraper, shn_avisos_scraper,
+  csv_export_service.
+
+  api_ingestor/app.py (el Flask separado que expone /status y /update/*).
+
+  Todo el frontend oogsj-web (SvelteKit) — esto queda fuera del alcance de
+  pytest; si se quiere cubrir requeriría Vitest/Playwright, una suite
+  totalmente aparte.
+
+No hay integración de CI todavía (no existe carpeta .github/workflows en el
+repo). run_tests.sh está pensado para poder engancharse a un pipeline el día
+que se arme uno — o para correrlo a mano antes de cada `git push` a main.

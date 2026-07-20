@@ -16,6 +16,7 @@ from blueprints.noticias_bp import noticias_bp
 from blueprints.especies_bp import especies_bp
 from blueprints.exports_bp    import exports_bp
 from blueprints.emac_cmd0_bp  import emac_cmd0_bp
+from blueprints.emac_cmd1_bp  import emac_cmd1_bp
 from blueprints.users_bp      import users_bp
 
 SWAGGER_CONFIG = {
@@ -57,7 +58,7 @@ SWAGGER_CONFIG = {
         {"name": "Contact",   "description": "Formulario de contacto y sugerencias"},
         {"name": "Files",     "description": "Archivos y documentos subidos"},
         {"name": "Exports",   "description": "Archivos CSV exportados por plataforma y mes"},
-        {"name": "EMAC",      "description": "Estación hidrometeorológica EMAC CMD0 - Caleta Córdova"},
+        {"name": "EMAC",      "description": "Estaciones hidrometeorológicas EMAC (CMD0 - Caleta Córdova, CMD1)"},
     ],
 }
 
@@ -90,6 +91,7 @@ def create_app() -> Flask:
     app.register_blueprint(especies_bp)
     app.register_blueprint(exports_bp)
     app.register_blueprint(emac_cmd0_bp)
+    app.register_blueprint(emac_cmd1_bp)
     app.register_blueprint(users_bp)
 
     return app
